@@ -16,6 +16,14 @@ CREATE TABLE `alternatives` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+DROP TABLE IF EXISTS `causal`;
+CREATE TABLE `causal` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cause_id` int(11) NOT NULL,
+  `consequence_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 DROP TABLE IF EXISTS `phrases`;
 CREATE TABLE `phrases` (
@@ -53,4 +61,4 @@ CREATE TABLE `tags` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- 2021-06-23 09:39:47
+-- 2021-06-23 15:09:48
