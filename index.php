@@ -1,9 +1,149 @@
 <?php
 
-$mysqli = new mysqli("localhost", "user", "password", "database");
-if (!$mysqli->set_charset("utf8mb4")) {
-    printf("Ошибка при загрузке набора символов utf8mb4: %s\n", $mysqli->error);
-    exit();
+@include('db.php');
+
+if (empty($mysqli)) {
+	$mysqli = new mysqli("localhost", "user", "password", "database");
+	if (!$mysqli->set_charset("utf8mb4")) {
+	    printf("Ошибка при загрузке набора символов utf8mb4: %s\n", $mysqli->error);
+	    exit();
+	}
+}
+
+function getFullSequenceArray($sequence_id, $mysqli) {
+	$query = "SELECT * FROM sequences WHERE id = ".$sequence_id;
+	$before_sequence_result = $mysqli->query($query);
+	$before_sequence = $before_sequence_result->fetch_assoc();
+	$reversed_full_alternative = [];
+	$alternative_piece = [];
+	if ($before_sequence['phrase_id'] != 0) {
+		$query = "SELECT * FROM phrases WHERE id = ".$before_sequence['phrase_id'];
+		$phrase_result = $mysqli->query($query);
+		$phrase_row = $phrase_result->fetch_assoc();
+		$alternative_piece[] = $phrase_row['phrase'];
+
+		$has_continue = true;
+		$sub_first_id = $sequence_id;
+
+		while($has_continue) {
+			$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
+			$next_continue_sequence_result = $mysqli->query($query);
+			$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
+			if (!empty($next_continue_sequence)) {
+				$sub_first_id = $next_continue_sequence['id'];
+				$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
+				$phrase_result = $mysqli->query($query);
+				$phrase_row = $phrase_result->fetch_assoc();
+
+				$alternative_piece[] = $phrase_row['phrase'];
+			} else {
+				$has_continue = false;
+			}
+		}
+
+		$reversed_full_alternative[] = $alternative_piece;
+
+	} else {
+		$has_continue = true;
+		$sub_first_id = $before_sequence['id'];
+
+		while($has_continue) {
+			$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
+			$next_continue_sequence_result = $mysqli->query($query);
+			$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
+			if (!empty($next_continue_sequence)) {
+				$sub_first_id = $next_continue_sequence['id'];
+				$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
+				$phrase_result = $mysqli->query($query);
+				$phrase_row = $phrase_result->fetch_assoc();
+
+				$alternative_piece[] = $phrase_row['phrase'];
+			} else {
+				$has_continue = false;
+			}
+		}
+
+		$reversed_full_alternative[] = $alternative_piece;
+
+		$equate_to_record_id = $sequence_id;
+		$has_begining = true;
+		while ($has_begining) {
+			$query = "SELECT * FROM sequences_equations WHERE equate_to_record_id = ".$equate_to_record_id;
+			$before_sequence_equation_result = $mysqli->query($query);
+			$before_sequence_equation = $before_sequence_equation_result->fetch_assoc();
+			if (!empty($before_sequence_equation)) {
+				$query = "SELECT * FROM sequences WHERE id = ".$before_sequence_equation['sequence_all_data_from_id'];
+				$before_sequence_result = $mysqli->query($query);
+				$before_sequence = $before_sequence_result->fetch_assoc();
+				$alternative_piece = [];
+				if ($before_sequence['phrase_id'] != 0) {
+					$has_begining = false;
+					$query = "SELECT * FROM phrases WHERE id = ".$before_sequence['phrase_id'];
+					$phrase_result = $mysqli->query($query);
+					$phrase_row = $phrase_result->fetch_assoc();
+					$alternative_piece[] = $phrase_row['phrase'];
+
+					$has_continue = true;
+					$sub_first_id = $before_sequence['id'];
+
+					while($has_continue) {
+						$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
+						$next_continue_sequence_result = $mysqli->query($query);
+						$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
+						if (!empty($next_continue_sequence)) {
+							$sub_first_id = $next_continue_sequence['id'];
+							$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
+							$phrase_result = $mysqli->query($query);
+							$phrase_row = $phrase_result->fetch_assoc();
+
+							$alternative_piece[] = $phrase_row['phrase'];
+						} else {
+							$has_continue = false;
+						}
+					}
+
+					$reversed_full_alternative[] = $alternative_piece;
+				} else {
+					$equate_to_record_id = $before_sequence_equation['sequence_all_data_from_id'];
+
+					$has_continue = true;
+					$sub_first_id = $equate_to_record_id;
+
+					while($has_continue) {
+						$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
+						$next_continue_sequence_result = $mysqli->query($query);
+						$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
+						if (!empty($next_continue_sequence)) {
+							$sub_first_id = $next_continue_sequence['id'];
+							$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
+							$phrase_result = $mysqli->query($query);
+							$phrase_row = $phrase_result->fetch_assoc();
+
+							$alternative_piece[] = $phrase_row['phrase'];
+						} else {
+							$has_continue = false;
+						}
+					}
+
+					$reversed_full_alternative[] = $alternative_piece;
+				}
+			} else {
+				$has_begining = false;
+			}
+		}
+	}
+
+	$full_sequence_array = [];
+	$i = 0;
+	foreach ($reversed_full_alternative as $alternative_piece) {
+		$i = $i + 1;
+		$array = $reversed_full_alternative[count($reversed_full_alternative) - $i];
+		foreach ($array as $item) {
+			$full_sequence_array[] = $item;
+		}
+	}
+
+	return $full_sequence_array;
 }
 
 function getAllEquationContinue(&$row_html, $sequences_row_id, $continue_phrase_text, $mysqli) {
@@ -50,7 +190,7 @@ function getAllEquationContinue(&$row_html, $sequences_row_id, $continue_phrase_
 	}
 }
 
-function insertNewSequencesFromFirst($first_sequence_id, $phrases, $mysqli) {
+function insertNewSequencesFromFirst(&$saved_sequence_id, $first_sequence_id, $phrases, $mysqli) {
 	$query = "INSERT INTO sequences (id, before_current_ending_id, phrase_id) VALUES (NULL, 0, 0)";
 
 	if ($mysqli->query($query) === TRUE) {
@@ -62,15 +202,7 @@ function insertNewSequencesFromFirst($first_sequence_id, $phrases, $mysqli) {
 		$query = "INSERT INTO sequences_equations (id, sequence_all_data_from_id, equate_to_record_id) VALUES (NULL, ".$first_sequence_id.", ".$sequence_row['id'].")";
 
 		if ($mysqli->query($query) === TRUE) {
-			if ($_POST['alternative_id'] != 0) {
-				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$sequence_row['id'];
-				$result = $mysqli->query($query);
-				$alternative = $result->fetch_assoc();
-				if (empty($alternative)) {
-					$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$sequence_row['id'].")";
-					$result = $mysqli->query($query);
-				}
-			}
+			$saved_sequence_id = $sequence_row['id'];
 
 			$query = "SELECT * FROM sequences_equations WHERE id = '".$mysqli->insert_id."'";
 
@@ -150,21 +282,13 @@ function getSequencesCoversCount($phrases, $skip_phrases, $before_current_ending
 	return $return;
 }
 
-function getCountedArray(&$counted, &$for_rearchivations, $next_sequences_equations_row, $phrases, $another_count, $mysqli) {
+function getCountedArray(&$counted, &$for_rearchivations, &$saved_sequence_id, $next_sequences_equations_row, $phrases, $another_count, $mysqli) {
 	$next_another_count = getSequencesCoversCount($phrases, $another_count, $next_sequences_equations_row['equate_to_record_id'], $mysqli);
 	$found_exect = false;
 
 	if ($next_another_count['count_covers'] == $next_another_count['count_sequence'] && $next_another_count['count_sequence'] == count($phrases)) {
 		$found_exect = true;
-		if ($_POST['alternative_id'] != 0) {
-			$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$next_sequences_equations_row['equate_to_record_id'];
-			$result = $mysqli->query($query);
-			$alternative = $result->fetch_assoc();
-			if (empty($alternative)) {
-				$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$next_sequences_equations_row['equate_to_record_id'].")";
-				$result = $mysqli->query($query);
-			}
-		}
+		$saved_sequence_id = $next_sequences_equations_row['equate_to_record_id'];
 
 		if ($next_sequences_equations_row['hidden'] == 1) {
 			$query = "UPDATE `sequences_equations` SET hidden` = CONV('0', 2, 10) + 0 WHERE `id` = '".$next_sequences_equations_row['id']."';";
@@ -183,7 +307,7 @@ function getCountedArray(&$counted, &$for_rearchivations, $next_sequences_equati
 				$next_sequences_equations_rows = $result->fetch_all(MYSQLI_ASSOC);
 				if (!empty($next_sequences_equations_rows)) {
 					foreach($next_sequences_equations_rows as $next_sequences_equations_row) {
-						$found_exect = getCountedArray($counted, $for_rearchivations, $next_sequences_equations_row, $phrases, $next_another_count['count_covers'], $mysqli);
+						$found_exect = getCountedArray($counted, $for_rearchivations, $saved_sequence_id, $next_sequences_equations_row, $phrases, $next_another_count['count_covers'], $mysqli);
 						if ($found_exect) {
 							return $found_exect;
 						}
@@ -230,6 +354,7 @@ if(!empty($_POST['data'])) {
 		}
 
 		if(isset($_POST['is_sequence'])) {
+			$saved_sequence_id = 0;
 			$query = "SELECT * FROM sequences WHERE before_current_ending_id = 0 and phrase_id = ".$phrases[0]['id'];
 			$result = $mysqli->query($query);
 			$sequence_row = $result->fetch_assoc();
@@ -250,15 +375,7 @@ if(!empty($_POST['data'])) {
 							if ($count['count_covers'] == $count['count_sequence'] && $count['count_sequence'] == count($phrases)) {
 								$already_processed = true;
 
-								if ($_POST['alternative_id'] != 0) {
-									$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$sequences_equations_row['equate_to_record_id'];
-									$result = $mysqli->query($query);
-									$alternative = $result->fetch_assoc();
-									if (empty($alternative)) {
-										$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$sequences_equations_row['equate_to_record_id'].")";
-										$result = $mysqli->query($query);
-									}
-								}
+								$saved_sequence_id = $sequences_equations_row['equate_to_record_id'];
 
 								if ($sequences_equations_row['hidden'] == 1) {
 									$query = "UPDATE `sequences_equations` SET `hidden` = CONV('0', 2, 10) + 0 WHERE `id` = '".$sequences_equations_row['id']."';";
@@ -277,7 +394,7 @@ if(!empty($_POST['data'])) {
 										$next_sequences_equations_rows = $result->fetch_all(MYSQLI_ASSOC);
 										if (!empty($next_sequences_equations_rows)) {
 											foreach($next_sequences_equations_rows as $next_sequences_equations_row) {
-												$found_exect = getCountedArray($counted, $for_rearchivations, $next_sequences_equations_row, $phrases, $count['count_covers'], $mysqli);
+												$found_exect = getCountedArray($counted, $for_rearchivations, $saved_sequence_id, $next_sequences_equations_row, $phrases, $count['count_covers'], $mysqli);
 												if ($found_exect) {
 													break;
 												}
@@ -315,15 +432,7 @@ if(!empty($_POST['data'])) {
 									}
 								}
 
-								if ($_POST['alternative_id'] != 0) {
-									$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$equate_to_record_id;
-									$result = $mysqli->query($query);
-									$alternative = $result->fetch_assoc();
-									if (empty($alternative)) {
-										$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$equate_to_record_id.")";
-										$result = $mysqli->query($query);
-									}
-								}
+								$saved_sequence_id = $equate_to_record_id;
 
 								if (!empty($for_rearchivations)) {
 									foreach($for_rearchivations as $for_rearchivation)
@@ -381,15 +490,7 @@ if(!empty($_POST['data'])) {
 									}
 								}
 
-								if ($_POST['alternative_id'] != 0) {
-									$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$equate_to_record_id;
-									$result = $mysqli->query($query);
-									$alternative = $result->fetch_assoc();
-									if (empty($alternative)) {
-										$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$equate_to_record_id.")";
-										$result = $mysqli->query($query);
-									}
-								}
+								$saved_sequence_id = $equate_to_record_id;
 
 								if (!empty($for_rearchivations)) {
 									foreach($for_rearchivations as $for_rearchivation)
@@ -429,9 +530,11 @@ if(!empty($_POST['data'])) {
 							}
 						}
 					} else {
-						insertNewSequencesFromFirst($first_sequence_id, $phrases, $mysqli);
+						insertNewSequencesFromFirst($saved_sequence_id, $first_sequence_id, $phrases, $mysqli);
 					}
-				}
+				} else {
+					$saved_sequence_id = $sequence_row['id'];
+				} 
 			} else {
 				$query = "INSERT INTO sequences (id, before_current_ending_id, phrase_id) VALUES (NULL, 0, '".$phrases[0]['id']."')";
 
@@ -439,18 +542,30 @@ if(!empty($_POST['data'])) {
 					$first_sequence_id = $mysqli->insert_id;
 
 					if(count($phrases) > 1) {
-						insertNewSequencesFromFirst($first_sequence_id, $phrases, $mysqli);
+						insertNewSequencesFromFirst($saved_sequence_id, $first_sequence_id, $phrases, $mysqli);
 					} else {
-						if ($_POST['alternative_id'] != 0) {
-							$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$first_sequence_id;
-							$result = $mysqli->query($query);
-							$alternative = $result->fetch_assoc();
-							if (empty($alternative)) {
-								$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$first_sequence_id.")";
-								$result = $mysqli->query($query);
-							}
-						}
+						$saved_sequence_id = $first_sequence_id;
 					}
+				}
+			}
+
+			if ($_POST['alternative_id'] != 0 && $saved_sequence_id != 0) {
+				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$saved_sequence_id;
+				$result = $mysqli->query($query);
+				$alternative = $result->fetch_assoc();
+				if (empty($alternative)) {
+					$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$saved_sequence_id.")";
+					$result = $mysqli->query($query);
+				}
+			}
+
+			if ($_POST['tag_id'] != 0 && $saved_sequence_id != 0) {
+				$query = "SELECT * FROM tags WHERE sequence_id = ".$_POST['tag_id']." and tag_id = ".$saved_sequence_id;
+				$result = $mysqli->query($query);
+				$tag = $result->fetch_assoc();
+				if (empty($tag)) {
+					$query = "INSERT INTO tags (id, sequence_id, tag_id) VALUES (NULL, ".$_POST['tag_id'].", ".$saved_sequence_id.")";
+					$result = $mysqli->query($query);
 				}
 			}
 		}		
@@ -509,6 +624,10 @@ if(!empty($_POST['data'])) {
 				<td><input type="text" name="alternative_id" value="<?php echo !empty($_POST['alternative_id']) ? $_POST['alternative_id'] : '0'; ?>"></td>
 			</tr>
 			<tr>
+				<td class="text-right">Є скороченим описом потенційного контексту використання<br>(доречних обставин використання) для id</td>
+				<td><input type="text" name="tag_id" value="<?php echo !empty($_POST['tag_id']) ? $_POST['tag_id'] : '0'; ?>"></td>
+			</tr>
+			<tr>
 				<td class="text-right">Кнопка для збереження</td>
 				<td><input type="submit" name="submit"></td>
 			</tr>
@@ -549,143 +668,13 @@ if(!empty($_POST['data'])) {
 				$row_html = $row_html . $phrase_row['phrase'];
 				$row_html = $row_html . ' ('.$sequences_row['id'].') ';
 
-				$alternatives = [];
 				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$sequences_row['id'];
 				$result = $mysqli->query($query);
 				$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
 				foreach ($alternatives_rows as $alternatives_row) {
-					$reversed_full_alternative = [];
-					$query = "SELECT * FROM sequences WHERE id = ".$alternatives_row['alternative_sequence_id'];
-					$before_sequence_result = $mysqli->query($query);
-					$before_sequence = $before_sequence_result->fetch_assoc();
-					$alternative_piece = [];
-					if ($before_sequence['phrase_id'] != 0) {
-						$query = "SELECT * FROM phrases WHERE id = ".$before_sequence['phrase_id'];
-						$phrase_result = $mysqli->query($query);
-						$phrase_row = $phrase_result->fetch_assoc();
-						$alternative_piece[] = $phrase_row['phrase'];
+					$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
 
-						$has_continue = true;
-						$sub_first_id = $alternatives_row['alternative_sequence_id'];
-
-						while($has_continue) {
-							$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
-							$next_continue_sequence_result = $mysqli->query($query);
-							$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
-							if (!empty($next_continue_sequence)) {
-								$sub_first_id = $next_continue_sequence['id'];
-								$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
-								$phrase_result = $mysqli->query($query);
-								$phrase_row = $phrase_result->fetch_assoc();
-
-								$alternative_piece[] = $phrase_row['phrase'];
-							} else {
-								$has_continue = false;
-							}
-						}
-
-						$reversed_full_alternative[] = $alternative_piece;
-
-					} else {
-						$has_continue = true;
-						$sub_first_id = $before_sequence['id'];
-
-						while($has_continue) {
-							$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
-							$next_continue_sequence_result = $mysqli->query($query);
-							$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
-							if (!empty($next_continue_sequence)) {
-								$sub_first_id = $next_continue_sequence['id'];
-								$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
-								$phrase_result = $mysqli->query($query);
-								$phrase_row = $phrase_result->fetch_assoc();
-
-								$alternative_piece[] = $phrase_row['phrase'];
-							} else {
-								$has_continue = false;
-							}
-						}
-
-						$reversed_full_alternative[] = $alternative_piece;
-
-						$equate_to_record_id = $alternatives_row['alternative_sequence_id'];
-						$has_begining = true;
-						while ($has_begining) {
-							$query = "SELECT * FROM sequences_equations WHERE equate_to_record_id = ".$equate_to_record_id;
-							$before_sequence_equation_result = $mysqli->query($query);
-							$before_sequence_equation = $before_sequence_equation_result->fetch_assoc();
-							if (!empty($before_sequence_equation)) {
-								$query = "SELECT * FROM sequences WHERE id = ".$before_sequence_equation['sequence_all_data_from_id'];
-								$before_sequence_result = $mysqli->query($query);
-								$before_sequence = $before_sequence_result->fetch_assoc();
-								$alternative_piece = [];
-								if ($before_sequence['phrase_id'] != 0) {
-									$has_begining = false;
-									$query = "SELECT * FROM phrases WHERE id = ".$before_sequence['phrase_id'];
-									$phrase_result = $mysqli->query($query);
-									$phrase_row = $phrase_result->fetch_assoc();
-									$alternative_piece[] = $phrase_row['phrase'];
-
-									$has_continue = true;
-									$sub_first_id = $before_sequence['id'];
-
-									while($has_continue) {
-										$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
-										$next_continue_sequence_result = $mysqli->query($query);
-										$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
-										if (!empty($next_continue_sequence)) {
-											$sub_first_id = $next_continue_sequence['id'];
-											$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
-											$phrase_result = $mysqli->query($query);
-											$phrase_row = $phrase_result->fetch_assoc();
-
-											$alternative_piece[] = $phrase_row['phrase'];
-										} else {
-											$has_continue = false;
-										}
-									}
-
-									$reversed_full_alternative[] = $alternative_piece;
-								} else {
-									$equate_to_record_id = $before_sequence_equation['sequence_all_data_from_id'];
-
-									$has_continue = true;
-									$sub_first_id = $equate_to_record_id;
-
-									while($has_continue) {
-										$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$sub_first_id;
-										$next_continue_sequence_result = $mysqli->query($query);
-										$next_continue_sequence = $next_continue_sequence_result->fetch_assoc();
-										if (!empty($next_continue_sequence)) {
-											$sub_first_id = $next_continue_sequence['id'];
-											$query = "SELECT * FROM phrases WHERE id = ".$next_continue_sequence['phrase_id'];
-											$phrase_result = $mysqli->query($query);
-											$phrase_row = $phrase_result->fetch_assoc();
-
-											$alternative_piece[] = $phrase_row['phrase'];
-										} else {
-											$has_continue = false;
-										}
-									}
-
-									$reversed_full_alternative[] = $alternative_piece;
-								}
-							} else {
-								$has_begining = false;
-							}
-						}
-					}
-
-					$full_phrase = '';
-					$i = 0;
-					foreach ($reversed_full_alternative as $alternative_piece) {
-						$i = $i + 1;
-						$array = $reversed_full_alternative[count($reversed_full_alternative) - $i];
-						$phrase = implode(' ', $array);
-						$full_phrase = !empty($full_phrase) ? $full_phrase . ' ' . $phrase : $full_phrase . $phrase;
-					}
-
-					$row_html = $row_html . '['.$full_phrase.']';
+					$row_html = $row_html . '['.implode(' ', $full_sequence_array).']';
 				}
 
 				$row_html = $row_html . '</td><td>';
@@ -696,11 +685,22 @@ if(!empty($_POST['data'])) {
 
 				if (!empty($continue_sequences_equations)) {
 					foreach ($continue_sequences_equations as $continue_sequences_equation) {
+						$query = "SELECT * FROM alternatives WHERE sequence_id = ".$continue_sequences_equation['equate_to_record_id'];
+						$result = $mysqli->query($query);
+						$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
+						$alternatives = [];
+						foreach ($alternatives_rows as $alternatives_row) {
+							$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
+
+							$alternatives[] = '['.implode(' ', $full_sequence_array).']';
+						}
+
 						$continue_phrase_text = $phrase_row['phrase'].' ';
 						$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$continue_sequences_equation['equate_to_record_id'];
 						$continue_sequences_result = $mysqli->query($query);
 						$continue_sequences = $continue_sequences_result->fetch_assoc();
 						if (!empty($continue_sequences)) {
+
 							$query = "SELECT * FROM phrases WHERE id = ".$continue_sequences['phrase_id'];
 							$continue_phrase_result = $mysqli->query($query);
 							$continue_phrase = $continue_phrase_result->fetch_assoc();
@@ -718,14 +718,15 @@ if(!empty($_POST['data'])) {
 									
 									$continue_phrase_text = $continue_phrase_text . $continue_phrase['phrase'].' ';
 								} else {
-									$row_html = $row_html . $continue_phrase_text;
-									$row_html = $row_html . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>';
+									$alternatives_text = implode(' ', $alternatives);
+									$row_html = $row_html . $continue_phrase_text . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>'.$alternatives_text.'<br><br>';
 									$has_continue = false;
 								}
 							}
 						} else {
 							$row_html = $row_html . $continue_phrase_text;
-							$row_html = $row_html . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>';
+							$alternatives_text = implode(' ', $alternatives);
+							$row_html = $row_html . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>'.$alternatives_text.'<br><br>';
 						}
 
 						$continue_phrase_text = $continue_phrase_text.' ';

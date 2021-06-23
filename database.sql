@@ -16,6 +16,7 @@ CREATE TABLE `alternatives` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+
 DROP TABLE IF EXISTS `phrases`;
 CREATE TABLE `phrases` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -43,4 +44,13 @@ CREATE TABLE `sequences_equations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
--- 2021-06-22 10:59:27
+DROP TABLE IF EXISTS `tags`;
+CREATE TABLE `tags` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `sequence_id` int(11) NOT NULL,
+  `tag_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+-- 2021-06-23 09:39:47
