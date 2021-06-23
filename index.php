@@ -663,7 +663,7 @@ if(!empty($_POST['data'])) {
 				<td><input type="text" name="data" value="<?php echo !empty($_POST['data']) ? $_POST['data'] : ''; ?>"></td>
 			</tr>
 			<tr>
-				<td class="text-right"><label for="is_sequence">Оцінка автора: "це повноцінна послідовність"</label></td>
+				<td class="text-right"><label for="is_sequence">Оцінка автора: "це повноцінна послідовність-констатація"</label></td>
 				<td><input type="checkbox" name="is_sequence" id="is_sequence" <?php echo isset($_POST['is_sequence']) ? 'checked' : '';?>> </td>
 			</tr>
 			<tr>
@@ -688,7 +688,7 @@ if(!empty($_POST['data'])) {
 	</form> -->
 	<table class="table">
 		<tr>
-			<td>Текстові json об'єкти</td>
+			<td>Текстові json об'єкти ("констатаційний" опис слова в мові<!-- констатація -->)</td>
 			<!-- <td>Альтернативні вирази</td> -->
 			<!-- <td>Збережені продовження</td> -->
 		</tr>
