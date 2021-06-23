@@ -155,6 +155,24 @@ function getAllEquationContinue(&$row_html, $sequences_row_id, $continue_phrase_
 
 	if (!empty($continue_sequences_equations)) {
 		foreach ($continue_sequences_equations as $continue_sequences_equation) {
+			$query = "SELECT * FROM alternatives WHERE sequence_id = ".$continue_sequences_equation['equate_to_record_id'];
+			$result = $mysqli->query($query);
+			$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
+			$alternatives = [];
+			foreach ($alternatives_rows as $alternatives_row) {
+				$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
+				$alternatives[] = '                    \''.implode(' ', $full_sequence_array).'\',<br>';
+			}
+
+			$query = "SELECT * FROM tags WHERE sequence_id = ".$continue_sequences_equation['equate_to_record_id'];
+			$result = $mysqli->query($query);
+			$tags_rows = $result->fetch_all(MYSQLI_ASSOC);
+			$tags = [];
+			foreach ($tags_rows as $tag_rows) {
+				$full_sequence_array = getFullSequenceArray($tag_rows['tag_id'], $mysqli);
+				$tags[] = '                    \''.implode(' ', $full_sequence_array).'\',<br>';
+			}
+
 			$query = "SELECT * FROM sequences WHERE before_current_ending_id = ".$continue_sequences_equation['equate_to_record_id'];
 			$continue_sequences_result = $mysqli->query($query);
 			$continue_sequences = $continue_sequences_result->fetch_assoc();
@@ -176,8 +194,30 @@ function getAllEquationContinue(&$row_html, $sequences_row_id, $continue_phrase_
 						
 						$next_continue_phrase_text = $next_continue_phrase_text . $continue_phrase['phrase'].' ';
 					} else {
-						$row_html = $row_html . $next_continue_phrase_text;
-						$row_html = $row_html . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>';
+						$row_html = $row_html . '            {<br>';
+						$row_html = $row_html . '                \'id\': \''.$continue_sequences_equation['equate_to_record_id'].'\',<br>';
+						$row_html = $row_html . '                \'Текст\': \''.$next_continue_phrase_text.'\'<br>';
+						if (count($alternatives) > 0) {
+							$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [<br>';
+							foreach ($alternatives as $alternative) {
+								$row_html = $row_html . $alternative;
+							}
+							$row_html = $row_html . '                ]<br>';
+						} else {
+							$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': []<br>';
+						}
+
+						if (count($tags) > 0) {
+							$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
+							foreach ($tags as $tag) {
+								$row_html = $row_html . $tag;
+							}
+							$row_html = $row_html . '                ],<br>';
+						} else {
+							$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': []<br>';
+						}
+
+						$row_html = $row_html . '            }<br>';
 						$has_continue = false;
 					}
 				}
@@ -557,6 +597,13 @@ if(!empty($_POST['data'])) {
 					$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$saved_sequence_id.")";
 					$result = $mysqli->query($query);
 				}
+				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$saved_sequence_id." and alternative_sequence_id = ".$_POST['alternative_id'];
+				$result = $mysqli->query($query);
+				$alternative = $result->fetch_assoc();
+				if (empty($alternative)) {
+					$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$saved_sequence_id.", ".$_POST['alternative_id'].")";
+					$result = $mysqli->query($query);
+				}
 			}
 
 			if ($_POST['tag_id'] != 0 && $saved_sequence_id != 0) {
@@ -620,7 +667,7 @@ if(!empty($_POST['data'])) {
 				<td><input type="checkbox" name="is_sequence" id="is_sequence" <?php echo isset($_POST['is_sequence']) ? 'checked' : '';?>> </td>
 			</tr>
 			<tr>
-				<td class="text-right">Є альтернативою для id</td>
+				<td class="text-right">Є варіантом альтернативного тескту для id</td>
 				<td><input type="text" name="alternative_id" value="<?php echo !empty($_POST['alternative_id']) ? $_POST['alternative_id'] : '0'; ?>"></td>
 			</tr>
 			<tr>
@@ -634,16 +681,16 @@ if(!empty($_POST['data'])) {
 		</table> 
 	</form>
 	<br><br>
-	<form action="/" method="GET">
+	<!-- <form action="/" method="GET">
 		Знайти найбільш відповідну послідовність
 		<input type="text" name="finder">
 		<input type="submit" name="submit">
-	</form>
+	</form> -->
 	<table class="table">
 		<tr>
-			<td>Асоціативний масив послідовностей</td>
+			<td>Текстові json об'єкти</td>
 			<!-- <td>Альтернативні вирази</td> -->
-			<td>Збережені продовження</td>
+			<!-- <td>Збережені продовження</td> -->
 		</tr>
 
 		<?php 
@@ -665,25 +712,51 @@ if(!empty($_POST['data'])) {
 				$query = "SELECT * FROM phrases WHERE id = ".$sequences_row['phrase_id'];
 				$phrase_result = $mysqli->query($query);
 				$phrase_row = $phrase_result->fetch_assoc();
-				$row_html = $row_html . $phrase_row['phrase'];
-				$row_html = $row_html . ' ('.$sequences_row['id'].') ';
+				/*$row_html = $row_html . $phrase_row['phrase'];
+				$row_html = $row_html . ' ('.$sequences_row['id'].') ';*/
+				$row_html = $row_html . '<pre>{<br>';
+				$row_html = $row_html . '    \'id\': '.$sequences_row['id'].',<br>';
+				$row_html = $row_html . '    \'Текст\': \''.$phrase_row['phrase'].'\',<br>';
 
 				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$sequences_row['id'];
 				$result = $mysqli->query($query);
 				$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
-				foreach ($alternatives_rows as $alternatives_row) {
-					$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
+				if (!empty($alternatives_rows)) {
+					$row_html = $row_html . '    \'Перелік варіантів альтернативного тексту\': [<br>';
+					foreach ($alternatives_rows as $alternatives_row) {
+						$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
 
-					$row_html = $row_html . '['.implode(' ', $full_sequence_array).']';
+						$row_html = $row_html . '            \''.implode(' ', $full_sequence_array).'\',<br>';
+					}
+					$row_html = $row_html . '    ]<br>';
+				} else {
+					$row_html = $row_html . '    \'Перелік варіантів альтернативного тексту\': [],<br>';
 				}
 
-				$row_html = $row_html . '</td><td>';
+				$query = "SELECT * FROM tags WHERE sequence_id = ".$sequences_row['id'];
+				$result = $mysqli->query($query);
+				$tags_rows = $result->fetch_all(MYSQLI_ASSOC);
+				if (!empty($tags_rows)) {
+					$row_html = $row_html . '    \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
+					foreach ($tags_rows as $tag_rows) {
+						$full_sequence_array = getFullSequenceArray($tag_rows['tag_id'], $mysqli);
+
+						$row_html = $row_html . '            \''.implode(' ', $full_sequence_array).'\',<br>';
+					}
+					$row_html = $row_html . '    ],<br>';
+				} else {
+					$row_html = $row_html . '    \'Перелік найбільш доречних скорочених описів контексту\': [],<br>';
+				}
+				//$row_html = $row_html . '}<br>';
+				//$row_html = $row_html . '</td><td>';
 
 				$query = "SELECT * FROM sequences_equations WHERE sequence_all_data_from_id = ".$sequences_row['id'];
 				$continue_sequences_equations_result = $mysqli->query($query);
 				$continue_sequences_equations = $continue_sequences_equations_result->fetch_all(MYSQLI_ASSOC);
 
 				if (!empty($continue_sequences_equations)) {
+
+					$row_html = $row_html . '    \'Перелік збережених продовжень тексту\': [<br>';
 					foreach ($continue_sequences_equations as $continue_sequences_equation) {
 						$query = "SELECT * FROM alternatives WHERE sequence_id = ".$continue_sequences_equation['equate_to_record_id'];
 						$result = $mysqli->query($query);
@@ -691,8 +764,16 @@ if(!empty($_POST['data'])) {
 						$alternatives = [];
 						foreach ($alternatives_rows as $alternatives_row) {
 							$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
+							$alternatives[] = '                    \''.implode(' ', $full_sequence_array).'\',<br>';
+						}
 
-							$alternatives[] = '['.implode(' ', $full_sequence_array).']';
+						$query = "SELECT * FROM tags WHERE sequence_id = ".$continue_sequences_equation['equate_to_record_id'];
+						$result = $mysqli->query($query);
+						$tags_rows = $result->fetch_all(MYSQLI_ASSOC);
+						$tags = [];
+						foreach ($tags_rows as $tag_rows) {
+							$full_sequence_array = getFullSequenceArray($tag_rows['tag_id'], $mysqli);
+							$tags[] = '                    \''.implode(' ', $full_sequence_array).'\',<br>';
 						}
 
 						$continue_phrase_text = $phrase_row['phrase'].' ';
@@ -718,24 +799,70 @@ if(!empty($_POST['data'])) {
 									
 									$continue_phrase_text = $continue_phrase_text . $continue_phrase['phrase'].' ';
 								} else {
-									$alternatives_text = implode(' ', $alternatives);
-									$row_html = $row_html . $continue_phrase_text . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>'.$alternatives_text.'<br><br>';
+									$row_html = $row_html . '            {<br>';
+									$row_html = $row_html . '                \'id\': \''.$continue_sequences_equation['equate_to_record_id'].'\',<br>';
+									$row_html = $row_html . '                \'Текст\': \''.$continue_phrase_text.'\'<br>';
+									if (count($alternatives) > 0) {
+										$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [<br>';
+										foreach ($alternatives as $alternative) {
+											$row_html = $row_html . $alternative;
+										}
+										$row_html = $row_html . '                ]<br>';
+									} else {
+										$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [],<br>';
+									}
+
+									if (count($tags) > 0) {
+										$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
+										foreach ($tags as $tag) {
+											$row_html = $row_html . $tag;
+										}
+										$row_html = $row_html . '                ],<br>';
+									} else {
+										$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': []<br>';
+									}
+
+									$row_html = $row_html . '            },<br>';
 									$has_continue = false;
 								}
 							}
 						} else {
-							$row_html = $row_html . $continue_phrase_text;
 							$alternatives_text = implode(' ', $alternatives);
-							$row_html = $row_html . ' ('.$continue_sequences_equation['equate_to_record_id'].')<br>'.$alternatives_text.'<br><br>';
-						}
+							$row_html = $row_html . '                \'id\': \''.$continue_sequences_equation['equate_to_record_id'].'\',<br>';
+							$row_html = $row_html . '                \'Текст\': \''.$continue_phrase_text.'\'<br>';
+							if (count($alternatives) > 0) {
+								$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [<br>';
+								foreach ($alternatives as $alternative) {
+									$row_html = $row_html . $alternative;
+								}
+								$row_html = $row_html . '                ]<br>';
+							} else {
+								$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': []<br>';
+							}
+
+							if (count($tags_rows) > 0) {
+									$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
+									foreach ($tags as $tag) {
+										$row_html = $row_html . $tag;
+									}
+									$row_html = $row_html . '                ],<br>';
+								} else {
+									$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': []<br>';
+								}
+								$row_html = $row_html . '            }<br>';
+							}
 
 						$continue_phrase_text = $continue_phrase_text.' ';
 
 						getAllEquationContinue($row_html, $continue_sequences_equation['equate_to_record_id'], $continue_phrase_text, $mysqli);
 					}
+
+					$row_html = $row_html . '    ]<br>';
+				} else {
+					$row_html = $row_html . '    \'Перелік збережених продовжень тексту\': []<br>';
 				}
 
-				$row_html = $row_html . '</td></tr>';
+				$row_html = $row_html . '}</td></tr>';
 				echo $row_html;
 			}
 
