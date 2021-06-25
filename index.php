@@ -952,6 +952,17 @@ if (!empty($_GET['show-sequences'])) {
 
 <?php 
 } else {
+
+if(!empty($_GET['delete-process']))
+{
+	//
+}
+
+if(!empty($_GET['delete-pelation']))
+{
+	//
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -1132,4 +1143,5 @@ if (!empty($_GET['show-sequences'])) {
 
 
 <?php
-} ?>
+}
+?>
