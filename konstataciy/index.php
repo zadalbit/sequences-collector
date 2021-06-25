@@ -10,39 +10,6 @@ if (empty($mysqli)) {
 	}
 }
 
-function getSubprocesses(&$row_html, $i, $subprocess, $processes_row, $mysqli) {
-	$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
-	$result = $mysqli->query($query);
-	$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
-	$spaces = '';
-
-	for ($k=0; $k < $i; $k++) { 
-		$spaces = $spaces . '    ';
-	}
-
-	if (!empty($subrelations_rows)) {
-		$row_html = $row_html . $spaces . '                \'Наступним виконується\': [<br>';
-		foreach ($subrelations_rows as $subrelation_row) {
-			$query = "SELECT * FROM processes WHERE id = ".$subrelation_row['process_id'];
-			$result = $mysqli->query($query);
-			$subprocess =  $result->fetch_assoc();
-
-			$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
-
-			$row_html = $row_html . $spaces . '                    {<br>';
-			$row_html = $row_html . $spaces . '                        \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-			$row_html = $row_html . $spaces . '                        \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
-
-			getSubprocesses($row_html, $i + 1, $subprocess, $processes_row, $mysqli);
-
-			$row_html = $row_html . $spaces . '                    }<br>';
-		}
-		$row_html = $row_html . $spaces . '                ]<br>';
-	} else {
-		$row_html = $row_html . $spaces . '                \'Наступним виконується\': []<br>';
-	}
-}
-
 function getFullSequenceArray($sequence_id, $mysqli) {
 	$query = "SELECT * FROM sequences WHERE id = ".$sequence_id;
 	$before_sequence_result = $mysqli->query($query);
@@ -229,25 +196,25 @@ function getAllEquationContinue(&$row_html, $sequences_row_id, $continue_phrase_
 					} else {
 						$row_html = $row_html . '            {<br>';
 						$row_html = $row_html . '                \'id\': \''.$continue_sequences_equation['equate_to_record_id'].'\',<br>';
-						$row_html = $row_html . '                \'Висловлювання яке визначає процес\': \'</pre>'.$next_continue_phrase_text.'<pre>\'<br>';
+						$row_html = $row_html . '                \'Текст\': \'</pre>'.$next_continue_phrase_text.'<pre>\'<br>';
 						if (count($alternatives) > 0) {
-							$row_html = $row_html . '                \'Перелік варіантів альтернативних висловлювань\': [<br>';
+							$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [<br>';
 							foreach ($alternatives as $alternative) {
 								$row_html = $row_html . $alternative;
 							}
 							$row_html = $row_html . '                ]<br>';
 						} else {
-							$row_html = $row_html . '                \'Перелік варіантів альтернативних висловлювань\': []<br>';
+							$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': []<br>';
 						}
 
 						if (count($tags) > 0) {
-							$row_html = $row_html . '                \'Перелік висловлювань з групи до якої належить дане висловлювання\': [<br>';
+							$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
 							foreach ($tags as $tag) {
 								$row_html = $row_html . $tag;
 							}
 							$row_html = $row_html . '                ],<br>';
 						} else {
-							$row_html = $row_html . '                \'Перелік висловлювань з групи до якої належить дане висловлювання\': []<br>';
+							$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': []<br>';
 						}
 
 						$row_html = $row_html . '            }<br>';
@@ -622,64 +589,35 @@ if(!empty($_POST['data'])) {
 				}
 			}
 
-			if (!empty($_GET['show-sequences'])) {
-				if (!empty($_POST['alternative_id']) && $_POST['alternative_id'] != 0 && $saved_sequence_id != 0) {
-					$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$saved_sequence_id;
-					$result = $mysqli->query($query);
-					$alternative = $result->fetch_assoc();
-					if (empty($alternative)) {
-						$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$saved_sequence_id.")";
-						$result = $mysqli->query($query);
-					}
-					$query = "SELECT * FROM alternatives WHERE sequence_id = ".$saved_sequence_id." and alternative_sequence_id = ".$_POST['alternative_id'];
-					$result = $mysqli->query($query);
-					$alternative = $result->fetch_assoc();
-					if (empty($alternative)) {
-						$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$saved_sequence_id.", ".$_POST['alternative_id'].")";
-						$result = $mysqli->query($query);
-					}
-				}
-
-				if (!empty($_POST['tag_id']) && $_POST['tag_id'] != 0 && $saved_sequence_id != 0) {
-					$query = "SELECT * FROM tags WHERE sequence_id = ".$_POST['tag_id']." and tag_id = ".$saved_sequence_id;
-					$result = $mysqli->query($query);
-					$tag = $result->fetch_assoc();
-					if (empty($tag)) {
-						$query = "INSERT INTO tags (id, sequence_id, tag_id) VALUES (NULL, ".$_POST['tag_id'].", ".$saved_sequence_id.")";
-						$result = $mysqli->query($query);
-					}
-				}
-			} else {
-				$query = "SELECT * FROM processes WHERE sequence_id = ".$saved_sequence_id;
+			if (!empty($_POST['alternative_id']) && $_POST['alternative_id'] != 0 && $saved_sequence_id != 0) {
+				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$_POST['alternative_id']." and alternative_sequence_id = ".$saved_sequence_id;
 				$result = $mysqli->query($query);
-				$process = $result->fetch_assoc();
-
-				if (empty($process)) {
-					$query = "INSERT INTO processes (id, sequence_id) VALUES (NULL, ".$saved_sequence_id.")";
-
-					if ($mysqli->query($query) === TRUE) {
-						$process_id = $mysqli->insert_id;
-
-						$query = "SELECT * FROM processes WHERE id = ".$process_id;
-						$result = $mysqli->query($query);
-						$process = $result->fetch_assoc();
-					}
+				$alternative = $result->fetch_assoc();
+				if (empty($alternative)) {
+					$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$_POST['alternative_id'].", ".$saved_sequence_id.")";
+					$result = $mysqli->query($query);
 				}
+				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$saved_sequence_id." and alternative_sequence_id = ".$_POST['alternative_id'];
+				$result = $mysqli->query($query);
+				$alternative = $result->fetch_assoc();
+				if (empty($alternative)) {
+					$query = "INSERT INTO alternatives (id, sequence_id, alternative_sequence_id) VALUES (NULL, ".$saved_sequence_id.", ".$_POST['alternative_id'].")";
+					$result = $mysqli->query($query);
+				}
+			}
 
-				if ($_POST['parent_process_id'] != 0) {
-					$query = "INSERT INTO processes_relations (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$_POST['goes_after_process_id'].", ".$process['id'].")";
-
-					if ($mysqli->query($query) === TRUE) {
-						$process_relation_id = $mysqli->insert_id;
-					}
+			if (!empty($_POST['tag_id']) && $_POST['tag_id'] != 0 && $saved_sequence_id != 0) {
+				$query = "SELECT * FROM tags WHERE sequence_id = ".$_POST['tag_id']." and tag_id = ".$saved_sequence_id;
+				$result = $mysqli->query($query);
+				$tag = $result->fetch_assoc();
+				if (empty($tag)) {
+					$query = "INSERT INTO tags (id, sequence_id, tag_id) VALUES (NULL, ".$_POST['tag_id'].", ".$saved_sequence_id.")";
+					$result = $mysqli->query($query);
 				}
 			}
 		}		
 	}
 }
-
-if (!empty($_GET['show-sequences'])) {
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -722,22 +660,22 @@ if (!empty($_GET['show-sequences'])) {
 		?>
 	</div>
 	<br><br>
-	<form action="/?show-sequences=1" method="POST">
+	<form action="/" method="POST">
 		<table>
 			<tr>
-				<td class="text-right">Зберегти одну або декілька фраз розділяючи по "пробілу"</td>
+				<td class="text-right">Зберегти одну або декілька фраз з розділителем "пробіл"</td>
 				<td><input type="text" name="data" value="<?php echo !empty($_POST['data']) ? $_POST['data'] : ''; ?>"></td>
 			</tr>
 			<tr>
-				<td class="text-right"><label for="is_sequence">Оцінка автора: "це повноцінне висловлювання"</label></td>
+				<td class="text-right"><label for="is_sequence">Оцінка автора: "це повноцінна послідовність-констатація"</label></td>
 				<td><input type="checkbox" name="is_sequence" id="is_sequence" <?php echo isset($_POST['is_sequence']) ? 'checked' : '';?>> </td>
 			</tr>
 			<tr>
-				<td class="text-right">Це висловлювання є альтернативним варіантом для id</td>
+				<td class="text-right">Є варіантом альтернативного тескту для id</td>
 				<td><input type="text" name="alternative_id" value="<?php echo !empty($_POST['alternative_id']) ? $_POST['alternative_id'] : '0'; ?>"></td>
 			</tr>
 			<tr>
-				<td class="text-right">Це висловлювання доповнює групу сформовану на основі з id</td>
+				<td class="text-right">Є скороченим описом потенційного контексту використання<br>(доречних обставин використання або <br> наявних асоціацій через які відношення до теми стає можливим) для id</td>
 				<td><input type="text" name="tag_id" value="<?php echo !empty($_POST['tag_id']) ? $_POST['tag_id'] : '0'; ?>"></td>
 			</tr>
 			<tr>
@@ -754,7 +692,7 @@ if (!empty($_GET['show-sequences'])) {
 	</form> -->
 	<table class="table">
 		<tr>
-			<td>Висловлювання</td>
+			<td>Текстові json об'єкти висновків ("констатаційний" опис слова в мові<!-- констатація -->)</td>
 			<!-- <td>Альтернативні вирази</td> -->
 			<!-- <td>Збережені продовження</td> -->
 		</tr>
@@ -782,36 +720,36 @@ if (!empty($_GET['show-sequences'])) {
 				$row_html = $row_html . ' ('.$sequences_row['id'].') ';*/
 				$row_html = $row_html . '<pre>{<br>';
 				$row_html = $row_html . '    \'id\': '.$sequences_row['id'].',<br>';
-				$row_html = $row_html . '    \'Текст\': \'</pre>'.$phrase_row['phrase'].'<pre>\',<br>';
+				$row_html = $row_html . '    \'Текст\': \''.$phrase_row['phrase'].'\',<br>';
 
 				$query = "SELECT * FROM alternatives WHERE sequence_id = ".$sequences_row['id'];
 				$result = $mysqli->query($query);
 				$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
 				if (!empty($alternatives_rows)) {
-					$row_html = $row_html . '    \'Перелік варіантів альтернативних висловлювань\': [<br>';
+					$row_html = $row_html . '    \'Перелік варіантів альтернативного тексту\': [<br>';
 					foreach ($alternatives_rows as $alternatives_row) {
 						$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
 
-						$row_html = $row_html . '            \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+						$row_html = $row_html . '            \''.implode(' ', $full_sequence_array).'\',<br>';
 					}
 					$row_html = $row_html . '    ]<br>';
 				} else {
-					$row_html = $row_html . '    \'Перелік варіантів альтернативних висловлювань\': [],<br>';
+					$row_html = $row_html . '    \'Перелік варіантів альтернативного тексту\': [],<br>';
 				}
 
 				$query = "SELECT * FROM tags WHERE sequence_id = ".$sequences_row['id'];
 				$result = $mysqli->query($query);
 				$tags_rows = $result->fetch_all(MYSQLI_ASSOC);
 				if (!empty($tags_rows)) {
-					$row_html = $row_html . '    \'Перелік висловлювань з групи до якої належить дане висловлювання \': [<br>';
+					$row_html = $row_html . '    \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
 					foreach ($tags_rows as $tag_rows) {
 						$full_sequence_array = getFullSequenceArray($tag_rows['tag_id'], $mysqli);
 
-						$row_html = $row_html . '            \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+						$row_html = $row_html . '            \''.implode(' ', $full_sequence_array).'\',<br>';
 					}
 					$row_html = $row_html . '    ],<br>';
 				} else {
-					$row_html = $row_html . '    \'Перелік висловлювань з групи до якої належить дане висловлювання \': [],<br>';
+					$row_html = $row_html . '    \'Перелік найбільш доречних скорочених описів контексту\': [],<br>';
 				}
 				//$row_html = $row_html . '}<br>';
 				//$row_html = $row_html . '</td><td>';
@@ -822,7 +760,7 @@ if (!empty($_GET['show-sequences'])) {
 
 				if (!empty($continue_sequences_equations)) {
 
-					$row_html = $row_html . '    \'Перелік збережених продовжень висловлювання\': [<br>';
+					$row_html = $row_html . '    \'Перелік збережених продовжень тексту\': [<br>';
 					foreach ($continue_sequences_equations as $continue_sequences_equation) {
 						$query = "SELECT * FROM alternatives WHERE sequence_id = ".$continue_sequences_equation['equate_to_record_id'];
 						$result = $mysqli->query($query);
@@ -867,25 +805,25 @@ if (!empty($_GET['show-sequences'])) {
 								} else {
 									$row_html = $row_html . '            {<br>';
 									$row_html = $row_html . '                \'id\': \''.$continue_sequences_equation['equate_to_record_id'].'\',<br>';
-									$row_html = $row_html . '                \'Текст\': \'</pre>'.$continue_phrase_text.'<pre>\',<br>';
+									$row_html = $row_html . '                \'Текст\': \'</pre>'.$continue_phrase_text.'<pre>\'<br>';
 									if (count($alternatives) > 0) {
-										$row_html = $row_html . '                \'Перелік варіантів альтернативних висловлювань\': [<br>';
+										$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [<br>';
 										foreach ($alternatives as $alternative) {
 											$row_html = $row_html . $alternative;
 										}
 										$row_html = $row_html . '                ]<br>';
 									} else {
-										$row_html = $row_html . '                \'Перелік варіантів альтернативних висловлювань\': [],<br>';
+										$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [],<br>';
 									}
 
 									if (count($tags) > 0) {
-										$row_html = $row_html . '                \'Перелік висловлювань з групи до якої належить дане висловлювання\': [<br>';
+										$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
 										foreach ($tags as $tag) {
 											$row_html = $row_html . $tag;
 										}
 										$row_html = $row_html . '                ],<br>';
 									} else {
-										$row_html = $row_html . '                \'Перелік висловлювань з групи до якої належить дане висловлювання\': []<br>';
+										$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': []<br>';
 									}
 
 									$row_html = $row_html . '            },<br>';
@@ -895,25 +833,25 @@ if (!empty($_GET['show-sequences'])) {
 						} else {
 							$alternatives_text = implode(' ', $alternatives);
 							$row_html = $row_html . '                \'id\': \''.$continue_sequences_equation['equate_to_record_id'].'\',<br>';
-							$row_html = $row_html . '                \'Висловлювання яке визначає процес\': \'</pre>'.$continue_phrase_text.'<pre>\'<br>';
+							$row_html = $row_html . '                \'Текст\': \'</pre>'.$continue_phrase_text.'<pre>\'<br>';
 							if (count($alternatives) > 0) {
-								$row_html = $row_html . '                \'Перелік варіантів альтернативних висловлювань\': [<br>';
+								$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': [<br>';
 								foreach ($alternatives as $alternative) {
 									$row_html = $row_html . $alternative;
 								}
 								$row_html = $row_html . '                ]<br>';
 							} else {
-								$row_html = $row_html . '                \'Перелік варіантів альтернативних висловлювань\': []<br>';
+								$row_html = $row_html . '                \'Перелік варіантів альтернативного тексту\': []<br>';
 							}
 
 							if (count($tags_rows) > 0) {
-									$row_html = $row_html . '                \'Перелік висловлювань з групи до якої належить дане висловлювання\': [<br>';
+									$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': [<br>';
 									foreach ($tags as $tag) {
 										$row_html = $row_html . $tag;
 									}
 									$row_html = $row_html . '                ],<br>';
 								} else {
-									$row_html = $row_html . '                \'Перелік висловлювань з групи до якої належить дане висловлювання\': []<br>';
+									$row_html = $row_html . '                \'Перелік найбільш доречних скорочених описів контексту\': []<br>';
 								}
 								$row_html = $row_html . '            }<br>';
 							}
@@ -925,7 +863,7 @@ if (!empty($_GET['show-sequences'])) {
 
 					$row_html = $row_html . '    ]<br>';
 				} else {
-					$row_html = $row_html . '    \'Перелік збережених продовжень Висловлювання яке визначає процесу\': []<br>';
+					$row_html = $row_html . '    \'Перелік збережених продовжень тексту\': []<br>';
 				}
 
 				$row_html = $row_html . '}</td></tr>';
@@ -949,187 +887,3 @@ if (!empty($_GET['show-sequences'])) {
 	</table>
 </body>
 </html>
-
-<?php 
-} else {
-?>
-
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<title>Процеси</title>
-	<style type="text/css">
-		pre {
-			display: inline;
-		}
-
-		.table {
-			border: 1px solid #d0d0d0;
-		}
-
-		.table tr td {
-			border: 1px solid #d0d0d0;
-			padding: 15px;
-		}
-
-		.text-right {
-			text-align: right;
-			padding: 10px;
-		}
-	</style>
-</head>
-<body>
-	<br><br>
-	<form action="/" method="POST">
-		<table>
-			<tr>
-				<td class="text-right">Висловлювання що визначає процес</td>
-				<td><input type="text" name="data" value="<?php echo !empty($_POST['data']) ? $_POST['data'] : ''; ?>"></td>
-				<td></td>
-				<td></td>
-			</tr>
-			<tr>
-				<td class="text-right"><label for="is_sequence">Оцінка автора: "це висловлювання є простим для розуміння визначенням"</label></td>
-				<td><input type="checkbox" name="is_sequence" id="is_sequence" <?php echo isset($_POST['is_sequence']) ? 'checked' : '';?>> </td>
-				<td></td>
-				<td></td>
-			</tr>
-			<tr>
-				<td class="text-right">Є альтернативним варіантом визначення під id</td>
-				<td><input type="text" name="alternative_id" value="<?php echo !empty($_POST['alternative_id']) ? $_POST['alternative_id'] : '0'; ?>"></td>
-				<td></td>
-				<td></td>
-			</tr>
-			<tr>
-				<td class="text-right">Є визначенням процесу який <br>являє собою підпроцес для id</td>
-				<td><input type="text" name="parent_process_id" value="<?php echo !empty($_POST['parent_process_id']) ? $_POST['parent_process_id'] : '0'; ?>"></td>
-				<td class="text-right">Є підпроцесом який виконується після id</td>
-				<td><input type="text" name="goes_after_process_id" value="<?php echo !empty($_POST['goes_after_process_id']) ? $_POST['goes_after_process_id'] : '0'; ?>"></td>
-			</tr>
-			<tr>
-				<td class="text-right">Кнопка для збереження</td>
-				<td><input type="submit" name="submit"></td>
-				<td></td>
-				<td></td>
-			</tr>
-		</table> 
-	</form>
-	<br><br>
-	<!-- <form action="/" method="GET">
-		Знайти найбільш відповідну послідовність
-		<input type="text" name="finder">
-		<input type="submit" name="submit">
-	</form> -->
-	<table class="table">
-		<tr>
-			<td>json об'єкти визначення процесів</td>
-
-			<?php
-				$continue_getting_starts = true;
-				$offset = 0;
-
-				while ($continue_getting_starts) {
-					$query = "SELECT * FROM processes LIMIT 100 OFFSET ".$offset;
-					$offset = $offset + 100;
-					$processed_starter = false;
-					$result = $mysqli->query($query);
-					$processes_rows = $result->fetch_all(MYSQLI_ASSOC);
-					
-					foreach ($processes_rows as $processes_row) {
-						$processed_starter = true;
-						$row_html = '<tr><td>';
-
-						$row_html = $row_html . '<pre>{<br>';
-						$row_html = $row_html . '    \'id\': '.$processes_row['id'].',<br>';
-						$full_sequence_array = getFullSequenceArray($processes_row['sequence_id'], $mysqli);
-						$row_html = $row_html . '    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
-
-						$query = "SELECT * FROM alternatives WHERE sequence_id = ".$processes_row['sequence_id'];
-						$result = $mysqli->query($query);
-						$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
-						if (!empty($alternatives_rows)) {
-							$row_html = $row_html . '    \'Перелік варіантів альтернативних визначень\': [<br>';
-							foreach ($alternatives_rows as $alternatives_row) {
-								$full_sequence_array = getFullSequenceArray($alternatives_row['alternative_sequence_id'], $mysqli);
-
-								$row_html = $row_html . '            \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
-							}
-							$row_html = $row_html . '    ],<br>';
-						} else {
-							$row_html = $row_html . '    \'Перелік варіантів альтернативних визначень\': [],<br>';
-						}
-
-						$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = 0 and parent_process_id = ".$processes_row['id'];
-						$result = $mysqli->query($query);
-						$relations_rows = $result->fetch_all(MYSQLI_ASSOC);
-
-						if (!empty($relations_rows)) {
-							$row_html = $row_html . '    \'Перелік визначень дочірних процесів\': [<br>';
-							foreach ($relations_rows as $relation_row) {
-								$query = "SELECT * FROM processes WHERE id = ".$relation_row['process_id'];
-								$result = $mysqli->query($query);
-								$subprocess =  $result->fetch_assoc();
-
-								$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
-
-								$row_html = $row_html . '            {<br>';
-								$row_html = $row_html . '                \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-								$row_html = $row_html . '                \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
-
-								$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
-								$result = $mysqli->query($query);
-								$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
-
-								if (!empty($subrelations_rows)) {
-									$row_html = $row_html . '                \'Наступним виконується\': [<br>';
-									foreach ($subrelations_rows as $subrelation_row) {
-										$query = "SELECT * FROM processes WHERE id = ".$subrelation_row['process_id'];
-										$result = $mysqli->query($query);
-										$subprocess =  $result->fetch_assoc();
-
-										$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
-
-										$row_html = $row_html . '                    {<br>';
-										$row_html = $row_html . '                        \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-										$row_html = $row_html . '                        \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
-
-										getSubprocesses($row_html, 1, $subprocess, $processes_row, $mysqli);
-
-										$row_html = $row_html . '                    }<br>';
-									}
-									$row_html = $row_html . '                ]<br>';
-								} else {
-									$row_html = $row_html . '                \'Наступним виконується\': []<br>';
-								}
-								
-								
-								$row_html = $row_html . '            }<br>';
-							}
-							$row_html = $row_html . '    ],<br>';
-						} else {
-							$row_html = $row_html . '    \'Перелік визначень дочірних процесів\': [],<br>';
-						}
-
-						$row_html = $row_html . '}</pre><br>';
-
-						$row_html = $row_html . '</td></tr>';
-						echo $row_html;
-					}
-
-					if (!$processed_starter) {
-						$continue_getting_starts = false;
-					}
-				}
-			?>
-
-			<!-- <td>Альтернативні вирази</td> -->
-			<!-- <td>Збережені продовження</td> -->
-		</tr>
-	</table>
-</body>
-</html>
-
-
-<?php
-} ?>

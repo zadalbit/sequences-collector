@@ -15,22 +15,15 @@ CREATE TABLE `alternatives` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-DROP TABLE IF EXISTS `processes`;
-CREATE TABLE `processes` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `sequence_id` int NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-
-DROP TABLE IF EXISTS `processes_relations`;
-CREATE TABLE `processes_relations` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `parent_process_id` int NOT NULL,
-  `goes_after_process_id` int NOT NULL DEFAULT '0',
-  `process_id` int NOT NULL,
+DROP TABLE IF EXISTS `causal`;
+CREATE TABLE `causal` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `cause_id` int(11) NOT NULL,
+  `consequence_id` int(11) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 DROP TABLE IF EXISTS `phrases`;
 CREATE TABLE `phrases` (
