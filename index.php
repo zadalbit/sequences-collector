@@ -10,36 +10,92 @@ if (empty($mysqli)) {
 	}
 }
 
-function getSubprocesses(&$row_html, $i, $subprocess, $processes_row, $mysqli) {
-	$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
+function getSubprocesses(&$row_html, $parent_process_id, $i, $subprocess_before, $processes_row, $mysqli) {
+	$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$subprocess_before['id']." and parent_process_id = ".$processes_row['id'];
 	$result = $mysqli->query($query);
-	$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
+	$next_subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
 	$spaces = '';
-
+	
 	for ($k=0; $k < $i; $k++) { 
-		$spaces = $spaces . '    ';
+		$spaces = $spaces . '        ';
 	}
 
+	$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$subprocess_before['id'];
+	$result = $mysqli->query($query);
+	$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
+
 	if (!empty($subrelations_rows)) {
-		$row_html = $row_html . $spaces . '                \'Наступним виконується\': [<br>';
-		foreach ($subrelations_rows as $subrelation_row) {
-			$query = "SELECT * FROM processes WHERE id = ".$subrelation_row['process_id'];
+		$f_i = true;
+		
+		foreach ($subrelations_rows as $subrelations_row) {
+			$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$parent_process_id." and subprocess_id = ".$subrelations_row['id'];
 			$result = $mysqli->query($query);
-			$subprocess =  $result->fetch_assoc();
+			$related = $result->fetch_assoc();
 
-			$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+			if (!empty($related)) {
+				if ($f_i) {
+					$row_html = $row_html . $spaces . '            \'Перелік визначень підпроцесів\': [<br>';
+					$f_i = false;
+				}
+				$query = "SELECT * FROM processes WHERE id = ".$subrelations_row['process_id'];
+				$result = $mysqli->query($query);
+				$subprocess =  $result->fetch_assoc();
 
-			$row_html = $row_html . $spaces . '                    {<br>';
-			$row_html = $row_html . $spaces . '                        \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-			$row_html = $row_html . $spaces . '                        \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+				$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-			getSubprocesses($row_html, $i + 1, $subprocess, $processes_row, $mysqli);
+				$row_html = $row_html . $spaces . '                {<br>';
+				$row_html = $row_html . $spaces . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+				$row_html = $row_html . $spaces . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 
-			$row_html = $row_html . $spaces . '                    }<br>';
+				getSubprocesses($row_html, $parent_process_id, $i + 1, $subprocess, $subprocess_before, $mysqli);
+
+				$row_html = $row_html . $spaces . '                }<br>';
+			}
 		}
-		$row_html = $row_html . $spaces . '                ]<br>';
+
+		if ($f_i) {
+			$row_html = $row_html . $spaces . '            \'Перелік визначень підпроцесів\': []<br>';
+		} else {
+			$row_html = $row_html . $spaces . '            ]<br>';
+		}
 	} else {
-		$row_html = $row_html . $spaces . '                \'Наступним виконується\': []<br>';
+		$row_html = $row_html . $spaces . '            \'Перелік визначень підпроцесів\': []<br>';
+	}
+
+	if (!empty($next_subrelations_rows)) {
+		$f_i = true;
+		foreach ($next_subrelations_rows as $next_subrelation_row) {
+			$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$parent_process_id." and subprocess_id = ".$next_subrelation_row['id'];
+			$result = $mysqli->query($query);
+			$related = $result->fetch_assoc();
+
+			if (!empty($related)) {
+				if ($f_i) {
+					$row_html = $row_html . $spaces . '                \'Після чого слідує\': [<br>';
+					$f_i = false;
+				}
+				$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
+				$result = $mysqli->query($query);
+				$subprocess =  $result->fetch_assoc();
+
+				$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+
+				$row_html = $row_html . $spaces . '                {<br>';
+				$row_html = $row_html . $spaces . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+				$row_html = $row_html . $spaces . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+				getSubprocesses($row_html, $parent_process_id, $i + 1, $subprocess, $processes_row, $mysqli);
+
+				$row_html = $row_html . $spaces . '                }<br>';
+			}
+		}
+		if ($f_i) {
+			$row_html = $row_html . $spaces . '            \'Після чого слідує\': []<br>';
+		} else {
+			$row_html = $row_html . $spaces . '            ]<br>';
+		}
+	} else {
+		$row_html = $row_html . $spaces . '            \'Після чого слідує\': []<br>';
 	}
 }
 
@@ -654,23 +710,57 @@ if(!empty($_POST['data'])) {
 				$result = $mysqli->query($query);
 				$process = $result->fetch_assoc();
 
-				if (empty($process)) {
-					$query = "INSERT INTO processes (id, sequence_id) VALUES (NULL, ".$saved_sequence_id.")";
+				if (isset($_POST['process_id']) && $_POST['process_id'] != 0) {
+					$query = "SELECT * FROM processes WHERE id = ".$_POST['process_id'];
+					$result = $mysqli->query($query);
+					$passed_process = $result->fetch_assoc();
+					if (!empty($passed_process) && empty($process)) {
+						$query = "UPDATE `processes` SET `sequence_id` = ".$saved_sequence_id." WHERE `id` = ".$_POST['process_id'];
+						$result = $mysqli->query($query); 
+					}
+				} else {
+					if (empty($process)) {
+						$query = "INSERT INTO processes (id, sequence_id) VALUES (NULL, ".$saved_sequence_id.")";
 
-					if ($mysqli->query($query) === TRUE) {
-						$process_id = $mysqli->insert_id;
+						if ($mysqli->query($query) === TRUE) {
+							$process_id = $mysqli->insert_id;
 
-						$query = "SELECT * FROM processes WHERE id = ".$process_id;
-						$result = $mysqli->query($query);
-						$process = $result->fetch_assoc();
+							$query = "SELECT * FROM processes WHERE id = ".$process_id;
+							$result = $mysqli->query($query);
+							$process = $result->fetch_assoc();
+						}
 					}
 				}
 
-				if ($_POST['parent_process_id'] != 0) {
-					$query = "INSERT INTO processes_relations (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$_POST['goes_after_process_id'].", ".$process['id'].")";
+				if (isset($_POST['parent_process_id']) && $_POST['parent_process_id'] != 0) {
+					$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$_POST['parent_process_id'];
+					$result = $mysqli->query($query);
+					$subprocess = $result->fetch_assoc();
 
-					if ($mysqli->query($query) === TRUE) {
-						$process_relation_id = $mysqli->insert_id;
+					if (empty($subprocess)) {
+						$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$_POST['goes_after_process_id'].", ".$process['id'].")";
+
+						if ($mysqli->query($query) === TRUE) {
+							$subprocess_relation_id = $mysqli->insert_id;
+						}
+					} else {
+						$query = "UPDATE `subprocesses` SET `goes_after_process_id` = ".$_POST['goes_after_process_id']." WHERE `id` = ".$subprocess['id'];
+						$result = $mysqli->query($query); 
+						$subprocess_relation_id = $subprocess['id'];
+					}
+
+					if ($_POST['related_to_process_id'] != 0) {
+						$query = "SELECT * FROM processes_relations WHERE subprocess_id = ".$subprocess_relation_id." and related_to_process_id = ".$_POST['related_to_process_id'];
+						$result = $mysqli->query($query);
+						$relation = $result->fetch_assoc();
+
+						if (empty($relation)) {
+							$query = "INSERT INTO processes_relations (id, related_to_process_id, subprocess_id) VALUES (NULL,".$_POST['related_to_process_id'].", ".$subprocess_relation_id.")";
+
+							if ($mysqli->query($query) === TRUE) {
+								$process_relation_id = $mysqli->insert_id;
+							}
+						}
 					}
 				}
 			}
@@ -955,10 +1045,36 @@ if (!empty($_GET['show-sequences'])) {
 
 if(!empty($_GET['delete-process']))
 {
-	//
+	$query = "SELECT * FROM processes_relations WHERE parent_process_id = ".$_GET['delete-process'];
+	$result = $mysqli->query($query);
+	$relations_rows = $result->fetch_all(MYSQLI_ASSOC);
+
+	if (!empty($relations_rows)) {
+		foreach ($relations_rows as $relation_row) {
+
+		}
+	} else {
+		$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = ".$_GET['delete-process'];
+		$result = $mysqli->query($query);
+		$relations_rows = $result->fetch_all(MYSQLI_ASSOC);
+
+		if (!empty($relations_rows)) {
+			foreach ($relations_rows as $relation_row) {
+				$query = "SELECT * FROM processes_relations WHERE process_id = ".$_GET['delete-process']." and parent_process_id = ".$relation_row['parent_process_id'];
+				$result = $mysqli->query($query);
+				$before_relation = $result->fetch_assoc();
+
+				$query = "UPDATE `sequences_equations` SET `goes_after_process_id` = ".$before_relation['goes_after_process_id']." WHERE `id` = ".$relation_row['id'];
+				$result = $mysqli->query($query);
+			}
+		}
+	}
+
+	$query = "DELETE FROM processes_relations WHERE process_id = ".$_GET['delete-process'];
+	$result = $mysqli->query($query);
 }
 
-if(!empty($_GET['delete-pelation']))
+if(!empty($_GET['delete-relation']))
 {
 	//
 }
@@ -1007,6 +1123,35 @@ if(!empty($_GET['delete-pelation']))
 				<td></td>
 			</tr>
 			<tr>
+				<td class="text-right">Оновлює визначення id</td>
+				<td><input type="text" name="process_id" value="<?php echo !empty($_POST['process_id']) ? $_POST['process_id'] : '0'; ?>"></td>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td class="text-right">Кнопка для збереження</td>
+				<td><input type="submit" name="submit"></td>
+				<td></td>
+				<td></td>
+			</tr>
+		</table> 
+	</form>
+	<br><br>
+	<form action="/" method="POST">
+		<table>
+			<tr>
+				<td class="text-right">Висловлювання що визначає процес</td>
+				<td><input type="text" name="data" value="<?php echo !empty($_POST['data']) ? $_POST['data'] : ''; ?>"></td>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
+				<td class="text-right"><label for="is_sequence">Оцінка автора: "це висловлювання є простим для розуміння визначенням"</label></td>
+				<td><input type="checkbox" name="is_sequence" id="is_sequence" <?php echo isset($_POST['is_sequence']) ? 'checked' : '';?>> </td>
+				<td></td>
+				<td></td>
+			</tr>
+			<tr>
 				<td class="text-right">Є альтернативним варіантом визначення під id</td>
 				<td><input type="text" name="alternative_id" value="<?php echo !empty($_POST['alternative_id']) ? $_POST['alternative_id'] : '0'; ?>"></td>
 				<td></td>
@@ -1017,6 +1162,12 @@ if(!empty($_GET['delete-pelation']))
 				<td><input type="text" name="parent_process_id" value="<?php echo !empty($_POST['parent_process_id']) ? $_POST['parent_process_id'] : '0'; ?>"></td>
 				<td class="text-right">Є підпроцесом який виконується після id</td>
 				<td><input type="text" name="goes_after_process_id" value="<?php echo !empty($_POST['goes_after_process_id']) ? $_POST['goes_after_process_id'] : '0'; ?>"></td>
+			</tr>
+			<tr>
+				<td class="text-right">Є пов'язаним з id</td> <!-- Показувати тільки в списку підпроцесів належних до -->
+				<td><input type="text" name="related_to_process_id" value="<?php echo !empty($_POST['related_to_process_id']) ? $_POST['related_to_process_id'] : '0'; ?>"></td>
+				<td></td>
+				<td></td>
 			</tr>
 			<tr>
 				<td class="text-right">Кнопка для збереження</td>
@@ -1049,6 +1200,7 @@ if(!empty($_GET['delete-pelation']))
 					
 					foreach ($processes_rows as $processes_row) {
 						$processed_starter = true;
+						$parent_process_id = $processes_row['id'];
 						$row_html = '<tr><td>';
 
 						$row_html = $row_html . '<pre>{<br>';
@@ -1071,12 +1223,12 @@ if(!empty($_GET['delete-pelation']))
 							$row_html = $row_html . '    \'Перелік варіантів альтернативних визначень\': [],<br>';
 						}
 
-						$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = 0 and parent_process_id = ".$processes_row['id'];
+						$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$processes_row['id'];
 						$result = $mysqli->query($query);
 						$relations_rows = $result->fetch_all(MYSQLI_ASSOC);
 
 						if (!empty($relations_rows)) {
-							$row_html = $row_html . '    \'Перелік визначень дочірних процесів\': [<br>';
+							$row_html = $row_html . '    \'Перелік визначень підпроцесів\': [<br>';
 							foreach ($relations_rows as $relation_row) {
 								$query = "SELECT * FROM processes WHERE id = ".$relation_row['process_id'];
 								$result = $mysqli->query($query);
@@ -1084,42 +1236,100 @@ if(!empty($_GET['delete-pelation']))
 
 								$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-								$row_html = $row_html . '            {<br>';
-								$row_html = $row_html . '                \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-								$row_html = $row_html . '                \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+								$row_html = $row_html . '        {<br>';
+								$row_html = $row_html . '            \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+								$row_html = $row_html . '            \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 
-								$query = "SELECT * FROM processes_relations WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
+								$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$subprocess['id'];
 								$result = $mysqli->query($query);
 								$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
 
 								if (!empty($subrelations_rows)) {
-									$row_html = $row_html . '                \'Наступним виконується\': [<br>';
-									foreach ($subrelations_rows as $subrelation_row) {
-										$query = "SELECT * FROM processes WHERE id = ".$subrelation_row['process_id'];
+									$f_i = true;
+									foreach ($subrelations_rows as $subrelations_row) {
+										$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$parent_process_id." and subprocess_id = ".$subrelations_row['id'];
 										$result = $mysqli->query($query);
-										$subprocess =  $result->fetch_assoc();
+										$related = $result->fetch_assoc();
 
-										$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+										if (!empty($related)) {
+											if ($f_i) {
+												$row_html = $row_html . '            \'Перелік визначень підпроцесів\': [<br>';
+												$f_i = false;
+											}
 
-										$row_html = $row_html . '                    {<br>';
-										$row_html = $row_html . '                        \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-										$row_html = $row_html . '                        \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+											$query = "SELECT * FROM processes WHERE id = ".$subrelations_row['process_id'];
+											$result = $mysqli->query($query);
+											$subprocess =  $result->fetch_assoc();
 
-										getSubprocesses($row_html, 1, $subprocess, $processes_row, $mysqli);
+											$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-										$row_html = $row_html . '                    }<br>';
+											$row_html = $row_html . '                {<br>';
+											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+											getSubprocesses($row_html, $parent_process_id, 1, $subprocess, $processes_row, $mysqli);
+
+											$row_html = $row_html . '                }<br>';
+										}
 									}
-									$row_html = $row_html . '                ]<br>';
+
+									if ($f_i) {
+										$row_html = $row_html . '            \'Перелік визначень підпроцесів\': []<br>';
+									} else {
+										$row_html = $row_html . '            ]<br>';
+									}
 								} else {
-									$row_html = $row_html . '                \'Наступним виконується\': []<br>';
+									$row_html = $row_html . '            \'Перелік визначень підпроцесів\': []<br>';
+								}
+
+								$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
+								$result = $mysqli->query($query);
+								$next_subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
+
+								if (!empty($next_subrelations_rows)) {
+									$f_i = true;
+									foreach ($next_subrelations_rows as $next_subrelation_row) {
+										$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$parent_process_id." and subprocess_id = ".$subrelations_row['id'];
+										$result = $mysqli->query($query);
+										$related = $result->fetch_assoc();
+
+										if (!empty($related)) {
+											if ($f_i) {
+												$row_html = $row_html . '                \'Після чого слідує\': [<br>';
+												$f_i = false;
+											}
+
+											$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
+											$result = $mysqli->query($query);
+											$subprocess =  $result->fetch_assoc();
+
+											$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+
+											$row_html = $row_html . '                {<br>';
+											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+											getSubprocesses($row_html, $parent_process_id, 1, $subprocess, $processes_row, $mysqli);
+
+											$row_html = $row_html . '                }<br>';
+										}
+									}
+
+									if ($f_i) {
+										$row_html = $row_html . '            \'Після чого слідує\': []<br>';
+									} else {
+										$row_html = $row_html . '            ]<br>';
+									}
+								} else {
+									$row_html = $row_html . '            \'Після чого слідує\': []<br>';
 								}
 								
 								
-								$row_html = $row_html . '            }<br>';
+								$row_html = $row_html . '        }<br>';
 							}
 							$row_html = $row_html . '    ],<br>';
 						} else {
-							$row_html = $row_html . '    \'Перелік визначень дочірних процесів\': [],<br>';
+							$row_html = $row_html . '    \'Перелік визначень підпроцесів\': [],<br>';
 						}
 
 						$row_html = $row_html . '}</pre><br>';
