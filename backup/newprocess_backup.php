@@ -21,6 +21,7 @@ function getSubprocessForLiArray(&$li_array, &$li_space_array, $show_as_related_
 		'li_array' => [],
 		'li_space_array' => []
 	];
+
 	if (!empty($relations_rows)) {
 		foreach ($relations_rows as $relation_row) {
 			$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$show_as_related_to_id." and subprocess_id = ".$relation_row['id'];
@@ -53,24 +54,21 @@ function getSubprocessForLiArray(&$li_array, &$li_space_array, $show_as_related_
 									'.implode(' ', $full_sequence_array).'
 								</div>
 								<div class="actions-div">
-									<span class="action-div delete-action" for="main-show-child">
-										Видалити
-									</span>
+									<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
+										<input type="radio" class="show-action-'.$subprocess['id'].'" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
+									</label>
+									<label class="action-div" for="main-hide-other-'.$subprocess['id'].'">
+										<input type="checkbox" name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
+									</label>
+									<label class="action-div" for="main-show-child">
+										<input type="radio"> Додати конкретизацію
+									</label>
 									<span class="action-div">
 										Замінити на альтернативу
 									</span>
-									<label class="action-div hide-other-'.$subprocess['id'].'" for="main-hide-other-'.$subprocess['id'].'">
-										<input type="checkbox" class="hide-other-'.$subprocess['id'].'"  name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
-									</label>
-									<label class="action-div" for="add-next">
-										<input type="radio"> Додати наступну конкретизацію (вправо)
-									</label>
-									<label class="action-div" for="main-show-child">
-										<input type="radio"> Додати конкретизацію (вниз)
-									</label>
-									<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
-										<input class="show-action-'.$subprocess['id'].'" type="radio" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
-									</label>
+									<span class="action-div delete-action" for="main-show-child">
+										Видалити
+									</span>
 								</div>
 							</div>
 						</div>';
@@ -83,13 +81,13 @@ function getSubprocessForLiArray(&$li_array, &$li_space_array, $show_as_related_
 				$li_space_array[$lvl][$processes_row['id']][$subprocess['id']]['html'] = $li_space_html;
 				$li_space_array[$lvl][$processes_row['id']][$subprocess['id']]['id'] = $subprocess['id'];
 
+				getSubprocessForLiArray($li_array, $li_space_array, $show_as_related_to_id, $lvl + 1, $subprocess, $mysqli);
+
 				$array = getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess, $processes_row, $mysqli);
 
 				$li_array[$lvl][$processes_row['id']] = array_merge($li_array[$lvl][$processes_row['id']], $array['li_array']);
 				
-				$li_space_array[$lvl][$processes_row['id']] = array_merge($li_space_array[$lvl][$processes_row['id']], $array['li_space_array']);
-				
-				getSubprocessForLiArray($li_array, $li_space_array, $show_as_related_to_id, $lvl + 1, $subprocess, $mysqli);	
+				$li_space_array[$lvl][$processes_row['id']] = array_merge($li_space_array[$lvl][$processes_row['id']], $array['li_space_array']);	
 			}
 		}
 	}
@@ -126,7 +124,7 @@ function getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess_b
 			
 			$text = empty($class) ? "" : $class." border-left";
 			$li_html .= '<div class="li-cell '.$text.'">';
-
+			
 			$text = empty($class) ? "border-left" : "";
 			$li_html .= '<div class="li-connect-cell '.$text.'">';
 
@@ -135,24 +133,21 @@ function getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess_b
 								'.implode(' ', $full_sequence_array).'
 							</div>
 							<div class="actions-div">
-								<span class="action-div delete-action" for="main-show-child">
-									Видалити
-								</span>
-								<span class="action-div">
-									Замінити на альтернативу
-								</span>
-								<label class="action-div hide-other-'.$subprocess['id'].'" for="main-hide-other-'.$subprocess['id'].'">
-									<input type="checkbox" class="hide-other-'.$subprocess['id'].'" name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
-								</label>
-								<label class="action-div" for="add-next">
-									<input type="radio"> Додати наступну конкретизацію (вправо)
-								</label>
-								<label class="action-div" for="main-show-child">
-									<input type="radio"> Додати конкретизацію (вниз)
-								</label>
 								<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
 									<input class="show-action-'.$subprocess['id'].'" type="radio" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
 								</label>
+								<label class="action-div" for="main-hide-other-'.$subprocess['id'].'">
+									<input type="checkbox" name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
+								</label>
+								<label class="action-div" for="add-child">
+									<input type="radio"> Додати конкретизацію
+								</label>
+								<span class="action-div">
+									Замінити на альтернативу
+								</span>
+								<span class="action-div delete-action" for="main-show-child">
+									Видалити
+								</span>
 							</div>
 						</div>
 					</div>';
@@ -165,13 +160,13 @@ function getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess_b
 			$li_space_array[$lvl][$processes_row['id']][$subprocess['id']]['html'] = $li_space_html;
 			$li_space_array[$lvl][$processes_row['id']][$subprocess['id']]['id'] = $subprocess['id'];
 
+			getSubprocessForLiArray($li_array, $li_space_array, $show_as_related_to_id, $lvl + 1, $subprocess, $mysqli);
+
 			$array = getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess, $processes_row, $mysqli);
 
 			$li_array[$lvl][$processes_row['id']] = array_merge($li_array[$lvl][$processes_row['id']], $array['li_array']);
 			
-			$li_space_array[$lvl][$processes_row['id']] = array_merge($li_space_array[$lvl][$processes_row['id']], $array['li_space_array']);
-
-			getSubprocessForLiArray($li_array, $li_space_array, $show_as_related_to_id, $lvl + 1, $subprocess, $mysqli);
+			$li_space_array[$lvl][$processes_row['id']] = array_merge($li_space_array[$lvl][$processes_row['id']], $array['li_space_array']);	
 		}
 
 		$array['li_array'] = $li_array[$lvl][$processes_row['id']];
@@ -1238,6 +1233,7 @@ if (!empty($_GET['show-process'])) {
 					foreach ($relations_rows as $relation_row) 
 					{
 						$li_html = '';
+						$li_array = [];
 						$li_space_html = '';
 
 						if ($f_i) {
@@ -1253,7 +1249,7 @@ if (!empty($_GET['show-process'])) {
 
 						$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-						$li_html .= '<div class="li-cell '.$class.'">';
+						$li_html .= '<div class="li-cell border-top">';
 
 						$li_html .= '<div class="li-connect-cell border-left">';
 
@@ -1262,24 +1258,21 @@ if (!empty($_GET['show-process'])) {
 											'.implode(' ', $full_sequence_array).'
 										</div>
 										<div class="actions-div">
-											<span class="action-div delete-action" for="main-show-child">
-												Видалити
-											</span>
+											<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
+												<input type="radio" class="show-action-'.$subprocess['id'].'" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
+											</label>
+											<label class="action-div" for="main-hide-other-'.$subprocess['id'].'">
+												<input type="checkbox" name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
+											</label>
+											<label class="action-div" for="main-show-child">
+												<input type="radio"> Додати конкретизацію
+											</label>
 											<span class="action-div">
 												Замінити на альтернативу
 											</span>
-											<label class="action-div hide-other-'.$subprocess['id'].'" for="main-hide-other-'.$subprocess['id'].'">
-												<input type="checkbox" class="hide-other-'.$subprocess['id'].'"  name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
-											</label>
-											<label class="action-div" for="add-next">
-												<input type="radio"> Додати наступну конкретизацію (вправо)
-											</label>
-											<label class="action-div" for="main-show-child">
-												<input type="radio"> Додати конкретизацію (вниз)
-											</label>
-											<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
-												<input class="show-action-'.$subprocess['id'].'" type="radio" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
-											</label>
+											<span class="action-div delete-action" for="main-show-child">
+												Видалити
+											</span>
 										</div>
 									</div>
 								</div>';
@@ -1297,6 +1290,7 @@ if (!empty($_GET['show-process'])) {
 						$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
 						$result = $mysqli->query($query);
 						$next_relations_rows = $result->fetch_all(MYSQLI_ASSOC);
+						
 						if (!empty($next_relations_rows)) {
 							foreach ($next_relations_rows as $next_relations_row) {
 								$li_html = '';
@@ -1308,7 +1302,7 @@ if (!empty($_GET['show-process'])) {
 								$subprocess =  $result->fetch_assoc();
 
 								$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
-
+								
 								$text = empty($class) ? "" : $class." border-left";
 								$li_html .= '<div class="li-cell '.$text.'">';
 								
@@ -1320,24 +1314,21 @@ if (!empty($_GET['show-process'])) {
 													'.implode(' ', $full_sequence_array).'
 												</div>
 												<div class="actions-div">
-													<span class="action-div delete-action" for="main-show-child">
-														Видалити
-													</span>
+													<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
+														<input type="radio" class="show-action-'.$subprocess['id'].'" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
+													</label>
+													<label class="action-div" for="main-hide-other-'.$subprocess['id'].'">
+														<input type="checkbox" name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
+													</label>
+													<label class="action-div" for="add-child">
+														<input type="radio"> Додати конкретизацію
+													</label>
 													<span class="action-div">
 														Замінити на альтернативу
 													</span>
-													<label class="action-div hide-other-'.$subprocess['id'].'" for="main-hide-other-'.$subprocess['id'].'">
-														<input type="checkbox" class="hide-other-'.$subprocess['id'].'" name="" id="main-hide-other-'.$subprocess['id'].'"> Приховати всі інакші в рядку
-													</label>
-													<label class="action-div" for="add-next">
-														<input type="radio"> Додати наступну конкретизацію (вправо)
-													</label>
-													<label class="action-div" for="main-show-child">
-														<input type="radio"> Додати конкретизацію (вниз)
-													</label>
-													<label class="action-div show-action-'.$subprocess['id'].'" for="main-show-child-for-'.$subprocess['id'].'">
-														<input class="show-action-'.$subprocess['id'].'" type="radio" name="child_for_'.$processes_row['id'].'" id="main-show-child-for-'.$subprocess['id'].'"> Показати конкретизації
-													</label>
+													<span class="action-div delete-action" for="main-show-child">
+														Видалити
+													</span>
 												</div>
 											</div>
 										</div>
@@ -1351,13 +1342,13 @@ if (!empty($_GET['show-process'])) {
 								$li_space_array[$lvl][$processes_row['id']][$subprocess['id']]['html'] = $li_space_html;
 								$li_space_array[$lvl][$processes_row['id']][$subprocess['id']]['id'] = $subprocess['id'];
 
+								getSubprocessForLiArray($li_array, $li_space_array, $show_as_related_to_id, $lvl + 1, $subprocess, $mysqli);
+
 								$array = getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess, $processes_row, $mysqli);
 
 								$li_array[$lvl][$processes_row['id']] = array_merge($array['li_array'], $li_array[$lvl][$processes_row['id']]);
 								
 								$li_space_array[$lvl][$processes_row['id']] = array_merge($array['li_space_array'], $li_space_array[$lvl][$processes_row['id']]);	
-
-								getSubprocessForLiArray($li_array, $li_space_array, $show_as_related_to_id, $lvl + 1, $subprocess, $mysqli);
 							}
 						}
 					}
@@ -1365,6 +1356,7 @@ if (!empty($_GET['show-process'])) {
 					$li_text = '';
 					$li_space_text = '';
 					$ul_html = '';
+
 					foreach ($li_array as $level => $lis) {
 						$ul_html .= '<div class="main-show-child overflow-y" style="margin-top:-6px;">';
 						foreach ($lis as $parent_id => $children) {
@@ -1392,16 +1384,9 @@ if (!empty($_GET['show-process'])) {
 								$ul_html .= '</li>
 								<script type="text/javascript">
 										$(document).ready(function(){
-											
-											$(".hide-other-'.$child['id'].'").click(function() {
-												if(document.getElementById("main-hide-other-'.$child['id'].'").checked) {
-													
-												} else {
-
-												}
-											});
 											$(".show-action-'.$child['id'].'").click(function() {
 												if(document.getElementById("main-show-child-for-'.$child['id'].'").checked) {
+												console.log("click")
 													$( ".item-lvl-'.$level.'" ).each(function( index ) {
 											    	  $( this ).find( ".li-connect-cell" ).removeClass("height-100");
 													  if ($( this ).data(\'id\') == \''.$child['id'].'\') {

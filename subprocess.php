@@ -71,7 +71,7 @@ function getSubprocessesForLayer(&$row_html, $parent_process_id, $i, $subprocess
 
 			if (!empty($related)) {
 				if ($f_i) {
-					$row_html = $row_html . $spaces . '                \'Після чого слідує\': [<br>';
+					$row_html = $row_html . $spaces . '            \'Після чого слідує\': [<br>';
 					$f_i = false;
 				}
 				$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
@@ -160,7 +160,7 @@ function getSubprocesses(&$row_html, $parent_process_id, $i, $subprocess_before,
 
 			if (!empty($related)) {
 				if ($f_i) {
-					$row_html = $row_html . $spaces . '                \'Після чого слідує\': [<br>';
+					$row_html = $row_html . $spaces . '            \'Після чого слідує\': [<br>';
 					$f_i = false;
 				}
 				$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
@@ -795,19 +795,11 @@ if(!empty($_POST['data'])) {
 					}
 				}
 			} else {
-				$query = "SELECT * FROM processes WHERE sequence_id = ".$saved_sequence_id;
-				$result = $mysqli->query($query);
-				$process = $result->fetch_assoc();
-
-				if (isset($_POST['process_id']) && $_POST['process_id'] != 0) {
-					$query = "SELECT * FROM processes WHERE id = ".$_POST['process_id'];
+				if (!empty($_GET['show-as-related-to-id'])) {
+					$query = "SELECT * FROM processes WHERE sequence_id = ".$saved_sequence_id;
 					$result = $mysqli->query($query);
-					$passed_process = $result->fetch_assoc();
-					if (!empty($passed_process) && empty($process)) {
-						$query = "UPDATE `processes` SET `sequence_id` = ".$saved_sequence_id." WHERE `id` = ".$_POST['process_id'];
-						$result = $mysqli->query($query); 
-					}
-				} else {
+					$process = $result->fetch_assoc();
+
 					if (empty($process)) {
 						$query = "INSERT INTO processes (id, sequence_id) VALUES (NULL, ".$saved_sequence_id.")";
 
@@ -819,40 +811,135 @@ if(!empty($_POST['data'])) {
 							$process = $result->fetch_assoc();
 						}
 					}
-				}
-/*
-				$query = "SELECT * FROM subprocesses WHERE parent_process_id = 0 and goes_after_process_id = 0 and process_id = ".$process['id'];
-				$result = $mysqli->query($query);
-				$subprocess = $result->fetch_assoc();
-*/
 
-				if (isset($_POST['parent_process_id']) && $_POST['parent_process_id'] != 0) {
-					$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$_POST['parent_process_id'];
+					if (isset($_POST['parent_process_id']) && $_POST['parent_process_id'] != 0) {
+						$goes_after_process_id = $_POST['goes_after_process_id'];
+						$related_to_process_id = $_POST['related_to_process_id'];
+						if($_POST['relation'] == 'as-next') {
+							$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$_POST['parent_process_id'];
+							$result = $mysqli->query($query);
+							$subprocess = $result->fetch_assoc();
+
+							if (empty($subprocess)) {
+								$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$goes_after_process_id.", ".$process['id'].")";
+
+								if ($mysqli->query($query) === TRUE) {
+									$subprocess_relation_id = $mysqli->insert_id;
+								}
+							} else {
+								$query = "UPDATE `subprocesses` SET `goes_after_process_id` = ".$goes_after_process_id." WHERE `id` = ".$subprocess['id'];
+								$result = $mysqli->query($query); 
+								$subprocess_relation_id = $subprocess['id'];
+							}
+
+							if ($related_to_process_id != 0) {
+								$query = "SELECT * FROM processes_relations WHERE subprocess_id = ".$subprocess_relation_id." and related_to_process_id = ".$related_to_process_id;
+								$result = $mysqli->query($query);
+								$relation = $result->fetch_assoc();
+
+								if (empty($relation)) {
+									$query = "INSERT INTO processes_relations (id, related_to_process_id, subprocess_id) VALUES (NULL,".$related_to_process_id.", ".$subprocess_relation_id.")";
+
+									if ($mysqli->query($query) === TRUE) {
+										$process_relation_id = $mysqli->insert_id;
+									}
+								}
+							}
+						} else {
+							$goes_after_process_id = 0;
+
+							$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$_POST['parent_process_id'];
+							$result = $mysqli->query($query);
+							$subprocess = $result->fetch_assoc();
+
+							if (empty($subprocess)) {
+								$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$goes_after_process_id.", ".$process['id'].")";
+
+								if ($mysqli->query($query) === TRUE) {
+									$subprocess_relation_id = $mysqli->insert_id;
+								}
+							} else {
+								$query = "UPDATE `subprocesses` SET `goes_after_process_id` = ".$goes_after_process_id." WHERE `id` = ".$subprocess['id'];
+								$result = $mysqli->query($query); 
+								$subprocess_relation_id = $subprocess['id'];
+							}
+
+							if ($related_to_process_id != 0) {
+								$query = "SELECT * FROM processes_relations WHERE subprocess_id = ".$subprocess_relation_id." and related_to_process_id = ".$related_to_process_id;
+								$result = $mysqli->query($query);
+								$relation = $result->fetch_assoc();
+
+								if (empty($relation)) {
+									$query = "INSERT INTO processes_relations (id, related_to_process_id, subprocess_id) VALUES (NULL,".$related_to_process_id.", ".$subprocess_relation_id.")";
+
+									if ($mysqli->query($query) === TRUE) {
+										$process_relation_id = $mysqli->insert_id;
+									}
+								}
+							}
+						}
+						
+					}
+				} else {
+					$query = "SELECT * FROM processes WHERE sequence_id = ".$saved_sequence_id;
 					$result = $mysqli->query($query);
-					$subprocess = $result->fetch_assoc();
+					$process = $result->fetch_assoc();
 
-					if (empty($subprocess)) {
-						$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$_POST['goes_after_process_id'].", ".$process['id'].")";
-
-						if ($mysqli->query($query) === TRUE) {
-							$subprocess_relation_id = $mysqli->insert_id;
+					if (isset($_POST['process_id']) && $_POST['process_id'] != 0) {
+						$query = "SELECT * FROM processes WHERE id = ".$_POST['process_id'];
+						$result = $mysqli->query($query);
+						$passed_process = $result->fetch_assoc();
+						if (!empty($passed_process) && empty($process)) {
+							$query = "UPDATE `processes` SET `sequence_id` = ".$saved_sequence_id." WHERE `id` = ".$_POST['process_id'];
+							$result = $mysqli->query($query); 
 						}
 					} else {
-						$query = "UPDATE `subprocesses` SET `goes_after_process_id` = ".$_POST['goes_after_process_id']." WHERE `id` = ".$subprocess['id'];
-						$result = $mysqli->query($query); 
-						$subprocess_relation_id = $subprocess['id'];
-					}
-
-					if ($_POST['related_to_process_id'] != 0) {
-						$query = "SELECT * FROM processes_relations WHERE subprocess_id = ".$subprocess_relation_id." and related_to_process_id = ".$_POST['related_to_process_id'];
-						$result = $mysqli->query($query);
-						$relation = $result->fetch_assoc();
-
-						if (empty($relation)) {
-							$query = "INSERT INTO processes_relations (id, related_to_process_id, subprocess_id) VALUES (NULL,".$_POST['related_to_process_id'].", ".$subprocess_relation_id.")";
+						if (empty($process)) {
+							$query = "INSERT INTO processes (id, sequence_id) VALUES (NULL, ".$saved_sequence_id.")";
 
 							if ($mysqli->query($query) === TRUE) {
-								$process_relation_id = $mysqli->insert_id;
+								$process_id = $mysqli->insert_id;
+
+								$query = "SELECT * FROM processes WHERE id = ".$process_id;
+								$result = $mysqli->query($query);
+								$process = $result->fetch_assoc();
+							}
+						}
+					}
+	/*
+					$query = "SELECT * FROM subprocesses WHERE parent_process_id = 0 and goes_after_process_id = 0 and process_id = ".$process['id'];
+					$result = $mysqli->query($query);
+					$subprocess = $result->fetch_assoc();
+	*/
+
+					if (isset($_POST['parent_process_id']) && $_POST['parent_process_id'] != 0) {
+						$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$_POST['parent_process_id'];
+						$result = $mysqli->query($query);
+						$subprocess = $result->fetch_assoc();
+
+						if (empty($subprocess)) {
+							$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$_POST['goes_after_process_id'].", ".$process['id'].")";
+
+							if ($mysqli->query($query) === TRUE) {
+								$subprocess_relation_id = $mysqli->insert_id;
+							}
+						} else {
+							$query = "UPDATE `subprocesses` SET `goes_after_process_id` = ".$_POST['goes_after_process_id']." WHERE `id` = ".$subprocess['id'];
+							$result = $mysqli->query($query); 
+							$subprocess_relation_id = $subprocess['id'];
+						}
+
+						if ($_POST['related_to_process_id'] != 0) {
+							$query = "SELECT * FROM processes_relations WHERE subprocess_id = ".$subprocess_relation_id." and related_to_process_id = ".$_POST['related_to_process_id'];
+							$result = $mysqli->query($query);
+							$relation = $result->fetch_assoc();
+
+							if (empty($relation)) {
+								$query = "INSERT INTO processes_relations (id, related_to_process_id, subprocess_id) VALUES (NULL,".$_POST['related_to_process_id'].", ".$subprocess_relation_id.")";
+
+								if ($mysqli->query($query) === TRUE) {
+									$process_relation_id = $mysqli->insert_id;
+								}
 							}
 						}
 					}
@@ -1142,6 +1229,10 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 	$result = $mysqli->query($query);
 	$processes_row = $result->fetch_assoc();
 
+	$query = "SELECT * FROM processes WHERE id = ".$_GET['parent-process-id'];
+	$result = $mysqli->query($query);
+	$parent_process_row = $result->fetch_assoc();
+
 	$query = "SELECT * FROM processes WHERE id = ".$_GET['show-as-related-to-id'];
 	$result = $mysqli->query($query);
 	$related_row = $result->fetch_assoc();
@@ -1191,6 +1282,36 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 					padding: 0px;
 					margin: 0px;
 					float: left;
+				}
+
+				textarea {
+					width: 700px;
+					height: 146px;
+					display: inline-block;
+					margin: 0px;
+					padding: 0px;
+					float: left
+				}
+
+				.save-btn {
+					height: 150px;
+					width: 100px;
+					margin: 0px;
+					padding: 0px;
+					display: inline-block;
+					margin-left: 10px;
+				}
+
+				label {
+					cursor: pointer;
+				}
+
+				.save-btn {
+					cursor: pointer;
+				}
+
+				.options {
+					padding: 20px;
 				}
 			</style>
 		</head>
@@ -1261,7 +1382,20 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 				$relations_rows = $result->fetch_all(MYSQLI_ASSOC);
 			?>
 			<div style="margin-top: 10px;margin-bottom: 10px;">
-				<img src="icon3.png"><h3>Перегляд піддерева з коренем "<?php echo implode(' ', $full_sequence_array); ?>":</h3>
+				<?php 
+
+				if($_GET['show-process'] != $_GET['show-as-related-to-id']) {
+					?>
+					<img src="icon3.png"><h3>Перегляд піддерева з коренем "<?php echo implode(' ', $full_sequence_array); ?>":</h3>
+					<?php
+				} else {
+					?>
+					<img src="icon1.png"><h3>Перегляд основного дерева:</h3>
+					<?php
+				}
+
+				?>
+				
 			</div>
 			<table class="table">
 
@@ -1373,6 +1507,49 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 							$row_html = $row_html . '    \'Перелік визначень підпроцесів\': [],<br>';
 						}
 
+						$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$processes_row['id']." and parent_process_id = ".$parent_process_row['id'];
+						$result = $mysqli->query($query);
+						$next_subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
+
+						if (!empty($next_subrelations_rows)) {
+							$f_i = true;
+							foreach ($next_subrelations_rows as $next_subrelation_row) {
+								$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$show_as_related_to_id." and subprocess_id = ".$next_subrelation_row['id'];
+								$result = $mysqli->query($query);
+								$related = $result->fetch_assoc();
+
+								if (!empty($related)) {
+									if ($f_i) {
+										$row_html = $row_html . '    \'Після чого слідує\': [<br>';
+										$f_i = false;
+									}
+
+									$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
+									$result = $mysqli->query($query);
+									$subprocess =  $result->fetch_assoc();
+
+									$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+
+									$row_html = $row_html . '        {<br>';
+									$row_html = $row_html . '            \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+									$row_html = $row_html . '            \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+									getSubprocesses($row_html, $show_as_related_to_id, 1, $subprocess, $parent_process_row, $mysqli);
+
+									$row_html = $row_html . '        }<br>';
+								}
+							}
+
+							if ($f_i) {
+								$row_html = $row_html . '    \'Після чого слідує\': []<br>';
+							} else {
+								$row_html = $row_html . '    ]<br>';
+							}
+						} else {
+							$row_html = $row_html . '    \'Після чого слідує\': []<br>';
+						}
+								
+
 						$row_html = $row_html . '}</pre><br>';
 
 						$row_html = $row_html . '</td></tr>';
@@ -1381,7 +1558,43 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 
 					<!-- <td>Альтернативні вирази</td> -->
 			</table>
-			<textarea></textarea>
+			<form action="/subprocess.php?show-process=<?php echo $_GET['show-process']; ?>&show-as-related-to-id=<?php echo $_GET['show-as-related-to-id']; ?>&parent-process-id=<?php echo $_GET['parent-process-id']; ?>" method="POST">
+				<?php 
+
+					if($_GET['show-process'] != $_GET['show-as-related-to-id']) {
+						?>
+						<input type="hidden" name="goes_after_process_id" value="<?php echo $_GET['show-process']; ?>"><br>
+						<input type="hidden" name="related_to_process_id" value="<?php echo $_GET['show-as-related-to-id']; ?>"><br>
+						<input type="hidden" name="parent_process_id" value="<?php echo $_GET['parent-process-id']; ?>"><br>
+						<?php
+					} else {
+						?>
+						<input type="hidden" name="goes_after_process_id" value="0"><br>
+						<input type="hidden" name="related_to_process_id" value="<?php echo $_GET['show-process']; ?>"><br>
+						<input type="hidden" name="parent_process_id" value="<?php echo $_GET['show-process']; ?>"><br>
+						<?php
+					}
+
+				?>
+				<input type="hidden" name="is_sequence" value="1">
+				<div class="options">
+					<?php 
+
+					if($_GET['show-process'] != $_GET['show-as-related-to-id']) {
+						?>
+						<input type="radio" name="relation" value="as-next" id="relation-as-next"><label for="relation-as-next">Додати в якості визначення процесу що є наступним</label><br>
+						<?php
+					}
+
+					?>
+					<input type="radio" name="relation" value="as-child" id="relation-as-child" checked><label for="relation-as-child">Додати в якості визначення процесу-складової</label><br>	
+				</div>
+				<div class="options">
+					<textarea name="data"></textarea>
+					<input class="save-btn" type="submit" name="submit">
+				</div>	
+			</form>
+			<br><br>
 		</body>
 		</html>
 

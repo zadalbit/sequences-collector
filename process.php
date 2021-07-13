@@ -45,9 +45,10 @@ function getSubprocessesForLayer(&$row_html, $parent_process_id, $i, $subprocess
 
 				$row_html = $row_html . $spaces . '                {<br>';
 				$row_html = $row_html . $spaces . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+				$row_html = $row_html . $spaces . '                    \'sub_id\': \'</pre>'.$subrelations_row['id'].'<pre>\',<br>';
 				$row_html = $row_html . $spaces . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 				$row_html = $row_html . $spaces . '                    \'Доступні дії\': {<br>';
-				$row_html = $row_html . $spaces . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$parent_process_id.'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
+				$row_html = $row_html . $spaces . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$parent_process_id.'&parent-process-id='.$subprocess_before['id'].'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
 				$row_html = $row_html . $spaces . '                    }<br>';
 
 				getSubprocessesForLayer($row_html, $parent_process_id, $i + 1, $subprocess, $subprocess_before, $mysqli);
@@ -74,7 +75,7 @@ function getSubprocessesForLayer(&$row_html, $parent_process_id, $i, $subprocess
 
 			if (!empty($related)) {
 				if ($f_i) {
-					$row_html = $row_html . $spaces . '                \'Після чого слідує\': [<br>';
+					$row_html = $row_html . $spaces . '            \'Після чого слідує\': [<br>';
 					$f_i = false;
 				}
 				$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
@@ -85,9 +86,10 @@ function getSubprocessesForLayer(&$row_html, $parent_process_id, $i, $subprocess
 
 				$row_html = $row_html . $spaces . '                {<br>';
 				$row_html = $row_html . $spaces . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+				$row_html = $row_html . $spaces . '                    \'sub_id\': \'</pre>'.$next_subrelation_row['id'].'<pre>\',<br>';
 				$row_html = $row_html . $spaces . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 				$row_html = $row_html . $spaces . '                    \'Доступні дії\': {<br>';
-				$row_html = $row_html . $spaces . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$parent_process_id.'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
+				$row_html = $row_html . $spaces . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$parent_process_id.'&parent-process-id='.$processes_row['id'].'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
 				$row_html = $row_html . $spaces . '                    }<br>';
 
 
@@ -167,7 +169,7 @@ function getSubprocesses(&$row_html, $parent_process_id, $i, $subprocess_before,
 
 			if (!empty($related)) {
 				if ($f_i) {
-					$row_html = $row_html . $spaces . '                \'Після чого слідує\': [<br>';
+					$row_html = $row_html . $spaces . '            \'Після чого слідує\': [<br>';
 					$f_i = false;
 				}
 				$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
@@ -1206,6 +1208,8 @@ if (!empty($_GET['show-process'])) {
 						$full_sequence_array = getFullSequenceArray($processes_row['sequence_id'], $mysqli);
 						$row_html = $row_html . '    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 
+						$row_html = $row_html . '    \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$processes_row['id'].'&show-as-related-to-id='.$processes_row['id'].'&parent-process-id=0" target="content">Переглянути в нижній частині екрану</a>\',<br>';
+
 						$query = "SELECT * FROM alternatives WHERE sequence_id = ".$processes_row['sequence_id'];
 						$result = $mysqli->query($query);
 						$alternatives_rows = $result->fetch_all(MYSQLI_ASSOC);
@@ -1236,9 +1240,10 @@ if (!empty($_GET['show-process'])) {
 
 								$row_html = $row_html . '        {<br>';
 								$row_html = $row_html . '            \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+								$row_html = $row_html . '            \'sub_id\': \'</pre>'.$relation_row['id'].'<pre>\',<br>';
 								$row_html = $row_html . '            \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 								$row_html = $row_html . '            \'Доступні дії\': {<br>';
-								$row_html = $row_html . '                \'Переглянути\': \'<a href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$show_as_related_to_id.'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
+								$row_html = $row_html . '                \'Переглянути\': \'<a href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$show_as_related_to_id.'&parent-process-id='.$processes_row['id'].'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
 								$row_html = $row_html . '            }<br>';
 
 								$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$subprocess['id'];
@@ -1266,9 +1271,10 @@ if (!empty($_GET['show-process'])) {
 
 											$row_html = $row_html . '                {<br>';
 											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+											$row_html = $row_html . '                    \'sub_id\': \'</pre>'.$subrelations_row['id'].'<pre>\',<br>';
 											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 											$row_html = $row_html . '                    \'Доступні дії\': {<br>';
-											$row_html = $row_html . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$show_as_related_to_id.'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
+											$row_html = $row_html . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$show_as_related_to_id.'&parent-process-id='.$subrelations_row['parent_process_id'].'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
 											$row_html = $row_html . '                    }<br>';
 
 											getSubprocessesForLayer($row_html, $show_as_related_to_id, 1, $subprocess, $processes_row, $mysqli);
@@ -1311,9 +1317,10 @@ if (!empty($_GET['show-process'])) {
 
 											$row_html = $row_html . '                {<br>';
 											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+											$row_html = $row_html . '                    \'sub_id\': \'</pre>'.$next_subrelation_row['id'].'<pre>\',<br>';
 											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 											$row_html = $row_html . '                    \'Доступні дії\': {<br>';
-											$row_html = $row_html . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$show_as_related_to_id.'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
+											$row_html = $row_html . '                        \'Переглянути\': \'<a  href="/subprocess.php?show-process='.$subprocess['id'].'&show-as-related-to-id='.$show_as_related_to_id.'&parent-process-id='.$next_subrelation_row['parent_process_id'].'" target="content">Переглянути в нижній частині екрану</a>\'<br>';
 											$row_html = $row_html . '                    }<br>';
 
 											getSubprocessesForLayer($row_html, $show_as_related_to_id, 1, $subprocess, $processes_row, $mysqli);
@@ -1418,8 +1425,9 @@ if(!empty($_GET['delete-relation']))
 	</style>
 </head>
 <body>
+	<a href="/process.php">process.php</a>
 	<br><br>
-	<form action="/" method="POST">
+	<form action="/process.php" method="POST">
 		<table>
 			<tr>
 				<td class="text-right">Висловлювання що визначає процес</td>
@@ -1552,6 +1560,7 @@ if(!empty($_GET['delete-relation']))
 
 								$row_html = $row_html . '        {<br>';
 								$row_html = $row_html . '            \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+								$row_html = $row_html . '            \'sub_id\': \'</pre>'.$relation_row['id'].'<pre>\',<br>';
 								$row_html = $row_html . '            \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 
 								$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$subprocess['id'];
@@ -1621,6 +1630,7 @@ if(!empty($_GET['delete-relation']))
 
 											$row_html = $row_html . '                {<br>';
 											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+											$row_html = $row_html . '                    \'sub_id\': \'</pre>'.$next_subrelation_row['id'].'<pre>\',<br>';
 											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
 
 											getSubprocesses($row_html, $parent_process_id, 1, $subprocess, $processes_row, $mysqli);
