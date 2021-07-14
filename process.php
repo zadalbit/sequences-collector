@@ -1456,7 +1456,7 @@ if(!empty($_GET['delete-relation']))
 		</table> 
 	</form>
 	<br><br>
-	<form action="/" method="POST">
+	<form action="/process.php" method="POST">
 		<table>
 			<tr>
 				<td class="text-right">Висловлювання що визначає процес</td>
