@@ -852,7 +852,6 @@ if(!empty($_POST['data'])) {
 
 							if (empty($subprocess)) {
 								$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$goes_after_process_id.", 0, ".$process['id'].")";
-
 								if ($mysqli->query($query) === TRUE) {
 									$subprocess_relation_id = $mysqli->insert_id;
 								}
@@ -1406,105 +1405,114 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 								$result = $mysqli->query($query);
 								$subprocess =  $result->fetch_assoc();
 
-								$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
-
-								$row_html = $row_html . '        {<br>';
-								$row_html = $row_html . '            \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-								$row_html = $row_html . '            \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
-
-								$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$subprocess['id'];
+								$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$related_row['id']." and subprocess_id = ".$relation_row['id'];
 								$result = $mysqli->query($query);
-								$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
+								$related = $result->fetch_assoc();
 
-								if (!empty($subrelations_rows)) {
-									$f_i = true;
-									foreach ($subrelations_rows as $subrelations_row) {
-										$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$show_as_related_to_id." and subprocess_id = ".$subrelations_row['id'];
-										$result = $mysqli->query($query);
-										$related = $result->fetch_assoc();
+								if (!empty($related)) {
 
-										if (!empty($related)) {
-											if ($f_i) {
-												$row_html = $row_html . '            \'Перелік визначень підпроцесів\': [<br>';
-												$f_i = false;
-											}
+									$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-											$query = "SELECT * FROM processes WHERE id = ".$subrelations_row['process_id'];
+									$row_html = $row_html . '        {<br>';
+									$row_html = $row_html . '            \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+									$row_html = $row_html . '            \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+									$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = 0 and parent_process_id = ".$subprocess['id'];
+									$result = $mysqli->query($query);
+									$subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
+
+									if (!empty($subrelations_rows)) {
+										$f_i = true;
+										foreach ($subrelations_rows as $subrelations_row) {
+											$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$show_as_related_to_id." and subprocess_id = ".$subrelations_row['id'];
 											$result = $mysqli->query($query);
-											$subprocess =  $result->fetch_assoc();
+											$related = $result->fetch_assoc();
 
-											$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+											if (!empty($related)) {
+												if ($f_i) {
+													$row_html = $row_html . '            \'Перелік визначень підпроцесів\': [<br>';
+													$f_i = false;
+												}
 
-											$row_html = $row_html . '                {<br>';
-											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+												$query = "SELECT * FROM processes WHERE id = ".$subrelations_row['process_id'];
+												$result = $mysqli->query($query);
+												$subprocess =  $result->fetch_assoc();
 
-											getSubprocesses($row_html, $show_as_related_to_id, 1, $subprocess, $processes_row, $mysqli);
+												$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-											$row_html = $row_html . '                }<br>';
+												$row_html = $row_html . '                {<br>';
+												$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+												$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+												getSubprocesses($row_html, $show_as_related_to_id, 1, $subprocess, $processes_row, $mysqli);
+
+												$row_html = $row_html . '                }<br>';
+											}
 										}
-									}
 
-									if ($f_i) {
+										if ($f_i) {
+											$row_html = $row_html . '            \'Перелік визначень підпроцесів\': []<br>';
+										} else {
+											$row_html = $row_html . '            ]<br>';
+										}
+									} else {
 										$row_html = $row_html . '            \'Перелік визначень підпроцесів\': []<br>';
-									} else {
-										$row_html = $row_html . '            ]<br>';
 									}
-								} else {
-									$row_html = $row_html . '            \'Перелік визначень підпроцесів\': []<br>';
-								}
 
-								$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
-								$result = $mysqli->query($query);
-								$next_subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
 
-								if (!empty($next_subrelations_rows)) {
-									$f_i = true;
-									foreach ($next_subrelations_rows as $next_subrelation_row) {
-										$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$show_as_related_to_id." and subprocess_id = ".$next_subrelation_row['id'];
-										$result = $mysqli->query($query);
-										$related = $result->fetch_assoc();
+									$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$subprocess['id']." and parent_process_id = ".$processes_row['id'];
+									$result = $mysqli->query($query);
+									$next_subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
 
-										if (!empty($related)) {
-											if ($f_i) {
-												$row_html = $row_html . '                \'Після чого слідує\': [<br>';
-												$f_i = false;
-											}
-
-											$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
+									if (!empty($next_subrelations_rows)) {
+										$f_i = true;
+										foreach ($next_subrelations_rows as $next_subrelation_row) {
+											$query = "SELECT * FROM processes_relations WHERE related_to_process_id = ".$show_as_related_to_id." and subprocess_id = ".$next_subrelation_row['id'];
 											$result = $mysqli->query($query);
-											$subprocess =  $result->fetch_assoc();
+											$related = $result->fetch_assoc();
 
-											$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
+											if (!empty($related)) {
+												if ($f_i) {
+													$row_html = $row_html . '                \'Після чого слідує\': [<br>';
+													$f_i = false;
+												}
 
-											$row_html = $row_html . '                {<br>';
-											$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
-											$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+												$query = "SELECT * FROM processes WHERE id = ".$next_subrelation_row['process_id'];
+												$result = $mysqli->query($query);
+												$subprocess =  $result->fetch_assoc();
 
-											getSubprocesses($row_html, $show_as_related_to_id, 1, $subprocess, $processes_row, $mysqli);
+												$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-											$row_html = $row_html . '                }<br>';
+												$row_html = $row_html . '                {<br>';
+												$row_html = $row_html . '                    \'id\': \'</pre>'.$subprocess['id'].'<pre>\',<br>';
+												$row_html = $row_html . '                    \'Визначення\': \'</pre>'.implode(' ', $full_sequence_array).'<pre>\',<br>';
+
+												getSubprocesses($row_html, $show_as_related_to_id, 1, $subprocess, $processes_row, $mysqli);
+
+												$row_html = $row_html . '                }<br>';
+											}
 										}
-									}
 
-									if ($f_i) {
-										$row_html = $row_html . '            \'Після чого слідує\': []<br>';
+										if ($f_i) {
+											$row_html = $row_html . '            \'Після чого слідує\': []<br>';
+										} else {
+											$row_html = $row_html . '            ]<br>';
+										}
 									} else {
-										$row_html = $row_html . '            ]<br>';
+										$row_html = $row_html . '            \'Після чого слідує\': []<br>';
 									}
-								} else {
-									$row_html = $row_html . '            \'Після чого слідує\': []<br>';
+									
+									
+									$row_html = $row_html . '        }<br>';
+
 								}
-								
-								
-								$row_html = $row_html . '        }<br>';
 							}
 							$row_html = $row_html . '    ],<br>';
 						} else {
 							$row_html = $row_html . '    \'Перелік визначень підпроцесів\': [],<br>';
 						}
 
-						$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$processes_row['id']." and parent_process_id = ".$parent_process_row['id'];
+						$query = "SELECT * FROM subprocesses WHERE goes_after_process_id = ".$processes_row['id']." and parent_process_id = ".$parent_process_id;
 						$result = $mysqli->query($query);
 						$next_subrelations_rows = $result->fetch_all(MYSQLI_ASSOC);
 
@@ -1566,7 +1574,7 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 						<?php
 					} else {
 						?>
-						<input type="hidden" name="goes_after_process_id" value="0"><br>
+						<input type="hidden" name="goes_after_process_id" value="<?php echo $_GET['show-process']; ?>"><br>
 						<input type="hidden" name="related_to_process_id" value="<?php echo $_GET['show-process']; ?>"><br>
 						<input type="hidden" name="parent_process_id" value="<?php echo $_GET['show-process']; ?>"><br>
 						<?php
@@ -1584,7 +1592,7 @@ if (!empty($_GET['show-process']) && !empty($_GET['show-as-related-to-id'])) {
 					}
 
 					?>
-					<input type="radio" name="relation" value="as-child" id="relation-as-child" checked><label for="relation-as-child">Додати в якості визначення процесу-складової</label><br>	
+					<input type="radio" name="relation" value="as-child" id="relation-as-child" checked><label for="relation-as-child">Додати в якості визначення вершини-підпроцесу</label><br>	
 				</div>
 				<div class="options">
 					<textarea name="data"></textarea>

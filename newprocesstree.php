@@ -53,7 +53,10 @@ function getSubprocessForLiArray(&$li_array, &$li_space_array, $show_as_related_
 									'.implode(' ', $full_sequence_array).'
 								</div>
 								<div class="actions-div">
-									<span class="action-div delete-action" for="main-show-child">
+									<span class="action-div add-action">
+										Додати в план
+									</span>
+									<span class="action-div delete-action">
 										Видалити
 									</span>
 									<span class="action-div">
@@ -135,7 +138,10 @@ function getNextSubprocessForLiArray($show_as_related_to_id, $lvl, $subprocess_b
 								'.implode(' ', $full_sequence_array).'
 							</div>
 							<div class="actions-div">
-								<span class="action-div delete-action" for="main-show-child">
+								<span class="action-div add-action">
+									Додати в план
+								</span>
+								<span class="action-div delete-action">
 									Видалити
 								</span>
 								<span class="action-div">
@@ -1081,6 +1087,10 @@ if (!empty($_GET['show-process'])) {
 					padding-top: 30px;
 				}
 
+				.add-action {
+					background: #c8ffc8;
+				}
+
 				.li-cell {
 					display: block;
 					height: 100%;
@@ -1262,7 +1272,10 @@ if (!empty($_GET['show-process'])) {
 											'.implode(' ', $full_sequence_array).'
 										</div>
 										<div class="actions-div">
-											<span class="action-div delete-action" for="main-show-child">
+											<span class="action-div add-action">
+												Додати в план
+											</span>
+											<span class="action-div delete-action">
 												Видалити
 											</span>
 											<span class="action-div">
@@ -1320,7 +1333,10 @@ if (!empty($_GET['show-process'])) {
 													'.implode(' ', $full_sequence_array).'
 												</div>
 												<div class="actions-div">
-													<span class="action-div delete-action" for="main-show-child">
+													<span class="action-div add-action">
+														Додати в план
+													</span>
+													<span class="action-div delete-action">
 														Видалити
 													</span>
 													<span class="action-div">
@@ -1587,9 +1603,6 @@ if (!empty($_GET['show-process'])) {
 				<input type="text" name="finder">
 				<input type="submit" name="submit">
 			</form> -->
-			<div style="margin-top: 10px;margin-bottom: 10px;">
-				<img src="icon1.png"><h3>Основне дерево визначень процесу:</h3>
-			</div>
 			<table class="table">
 
 					<!-- <td>Альтернативні вирази</td> -->
