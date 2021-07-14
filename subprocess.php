@@ -846,20 +846,18 @@ if(!empty($_POST['data'])) {
 								}
 							}
 						} else {
-							$goes_after_process_id = 0;
-
-							$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$_POST['parent_process_id'];
+							$query = "SELECT * FROM subprocesses WHERE process_id = ".$process['id']." and parent_process_id = ".$goes_after_process_id;
 							$result = $mysqli->query($query);
 							$subprocess = $result->fetch_assoc();
 
 							if (empty($subprocess)) {
-								$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$_POST['parent_process_id'].", ".$goes_after_process_id.", ".$process['id'].")";
+								$query = "INSERT INTO subprocesses (id, parent_process_id, goes_after_process_id, process_id) VALUES (NULL, ".$goes_after_process_id.", 0, ".$process['id'].")";
 
 								if ($mysqli->query($query) === TRUE) {
 									$subprocess_relation_id = $mysqli->insert_id;
 								}
 							} else {
-								$query = "UPDATE `subprocesses` SET `goes_after_process_id` = ".$goes_after_process_id." WHERE `id` = ".$subprocess['id'];
+								$query = "UPDATE `subprocesses` SET `goes_after_process_id` = 0 WHERE `id` = ".$subprocess['id'];
 								$result = $mysqli->query($query); 
 								$subprocess_relation_id = $subprocess['id'];
 							}
@@ -878,7 +876,6 @@ if(!empty($_POST['data'])) {
 								}
 							}
 						}
-						
 					}
 				} else {
 					$query = "SELECT * FROM processes WHERE sequence_id = ".$saved_sequence_id;

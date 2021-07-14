@@ -441,7 +441,7 @@ function getCountedArray(&$counted, &$for_rearchivations, &$saved_sequence_id, $
 	}
 }
 
-function getSequenceId($sequence) {
+function getSequenceId($sequence, $mysqli) {
 	$pieces = explode(' ', $sequence);
 	$continuing = false;
 	$has_starter = false;

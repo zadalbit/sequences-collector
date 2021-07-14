@@ -13,7 +13,7 @@ if (empty($mysqli)) {
 include('source.php');
 
 if(!empty($_POST['data'])) {
-	$saved_sequence_id = getSequenceId($_POST['data']);
+	$saved_sequence_id = getSequenceId($_POST['data'], $mysqli);
 
 	if ($saved_sequence_id > 0) {
 		if (!empty($_GET['show-sequences'])) {
