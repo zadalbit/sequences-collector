@@ -44,7 +44,7 @@ function getSubprocessForLiArray(&$li_array, &$li_space_array, $show_as_related_
 
 				$full_sequence_array = getFullSequenceArray($subprocess['sequence_id'], $mysqli);
 
-				$li_html .= '<div class="li-cell border-top">';
+				$li_html .= '<div class="li-cell '.$class.'">';
 
 				$li_html .= '<div class="li-connect-cell border-left">';
 
